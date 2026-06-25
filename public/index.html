@@ -8,16 +8,16 @@
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --pitch-dark:#0B3D2E;
-    --pitch:#13502F;
-    --grass:#2E9A5C;
-    --grass-bright:#3FC274;
-    --gold:#D9A53D;
-    --gold-soft:#F0CE83;
-    --chalk:#F6F3EA;
-    --ink:#0F1A14;
-    --red:#C1432A;
-    --line: rgba(246,243,234,0.14);
+    --pitch-dark:#142840;
+    --pitch:#1B3556;
+    --grass:#3B6EA5;
+    --grass-bright:#5A8BC4;
+    --gold:#A33D3D;
+    --gold-soft:#C97070;
+    --chalk:#F2EFE6;
+    --ink:#14181D;
+    --red:#7A2E2E;
+    --line: rgba(242,239,230,0.14);
   }
   *{box-sizing:border-box;}
   body{
@@ -44,28 +44,60 @@
   }
   header h1{font-size:28px; margin:0; line-height:1; color:var(--chalk);}
   header h1 span{color:var(--gold);}
-  header .sub{font-size:13px; color:rgba(246,243,234,0.65); margin-top:6px;}
+  .header-top{display:flex; align-items:center; gap:14px; margin-top:2px;}
+  .badge{flex:none; filter:drop-shadow(0 2px 6px rgba(0,0,0,0.3));}
+  header .sub{font-size:13px; color:rgba(242,239,230,0.65); margin-top:6px;}
 
   .who-bar{display:flex; align-items:center; justify-content:space-between; margin-top:14px; gap:10px; flex-wrap:wrap;}
   .me-chip{display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.06); border:1px solid var(--line); padding:6px 12px; border-radius:999px; font-size:13px;}
   .me-chip b{color:var(--gold-soft);}
-  .me-chip button{background:none; border:none; color:rgba(246,243,234,0.5); font-size:11px; text-decoration:underline; cursor:pointer; padding:0; font-family:'Inter',sans-serif;}
+  .me-chip button{background:none; border:none; color:rgba(242,239,230,0.5); font-size:11px; text-decoration:underline; cursor:pointer; padding:0; font-family:'Inter',sans-serif;}
   .avatars{display:flex; gap:-6px;}
   .avatar{width:26px;height:26px;border-radius:50%; background:var(--grass); color:var(--ink); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; border:2px solid var(--pitch-dark); margin-left:-6px; font-family:'Space Mono',monospace;}
 
   .tabs{display:flex; gap:0; margin:18px 16px 0; border-bottom:1px solid var(--line);}
-  .tab{flex:1; text-align:center; padding:12px 8px; cursor:pointer; font-family:'Anton',sans-serif; letter-spacing:0.04em; text-transform:uppercase; font-size:14px; color:rgba(246,243,234,0.45); border-bottom:3px solid transparent; transition:all .15s;}
+  .tab{flex:1; text-align:center; padding:12px 8px; cursor:pointer; font-family:'Anton',sans-serif; letter-spacing:0.04em; text-transform:uppercase; font-size:14px; color:rgba(242,239,230,0.45); border-bottom:3px solid transparent; transition:all .15s;}
   .tab.active{color:var(--gold); border-bottom-color:var(--gold);}
 
-  main{padding:18px 16px 40px; max-width:900px; margin:0 auto;}
+  .layout{padding:18px 16px 40px; max-width:900px; margin:0 auto;}
+  main{min-width:0;}
+  @media(min-width:1000px){
+    .layout{display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:24px; align-items:start; max-width:1180px;}
+    .tabs .tab[data-tab="live"]{display:none;}
+    #panel-live{display:block !important; position:sticky; top:18px; max-height:calc(100vh - 36px); overflow-y:auto;}
+  }
+  #panel-live{background:var(--pitch); border:1px solid var(--line); border-radius:12px; padding:16px;}
+  .live-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;}
+  .live-head h2{font-family:'Anton',sans-serif; font-size:16px; margin:0; letter-spacing:0.03em; text-transform:uppercase;}
+  .live-head button{width:auto; padding:6px 10px; font-size:12px;}
+  .live-updated{font-family:'Space Mono',monospace; font-size:10.5px; color:rgba(242,239,230,0.45); margin-bottom:16px;}
+  .live-section{margin-bottom:20px;}
+  .live-section:last-child{margin-bottom:0;}
+  .live-section-title{font-family:'Anton',sans-serif; font-size:12px; letter-spacing:0.06em; color:var(--gold-soft); border-bottom:1px solid var(--line); padding-bottom:6px; margin-bottom:10px; text-transform:uppercase;}
+  .live-empty{font-size:12px; color:rgba(242,239,230,0.45); font-style:italic;}
+  .fixture-row{padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:12.5px; display:flex; align-items:baseline; flex-wrap:wrap; gap:4px;}
+  .fixture-row:last-child{border-bottom:none;}
+  .fixture-row .grp-tag{font-family:'Space Mono',monospace; font-size:10px; color:var(--ink); background:var(--gold-soft); padding:1px 6px; border-radius:4px; font-weight:700;}
+  .fixture-row .teams{font-weight:600;}
+  .fixture-row .time{font-family:'Space Mono',monospace; font-size:11px; color:rgba(242,239,230,0.5); margin-left:auto;}
+  .live-dot{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--grass-bright); animation:livePulse 1.4s infinite;}
+  @keyframes livePulse{0%,100%{opacity:1;}50%{opacity:0.25;}}
+  .standings-group{margin-bottom:14px;}
+  .standings-group:last-child{margin-bottom:0;}
+  .standings-group .sg-title{font-family:'Space Mono',monospace; font-size:11px; color:rgba(242,239,230,0.55); margin-bottom:4px;}
+  table.standings{width:100%; border-collapse:collapse; font-size:11px;}
+  table.standings th, table.standings td{padding:3px 4px; text-align:center; border-bottom:1px solid rgba(255,255,255,0.06);}
+  table.standings th{color:rgba(242,239,230,0.45); font-weight:500;}
+  table.standings td.team{text-align:left; font-weight:600;}
+  table.standings tbody tr:last-child td{border-bottom:none;}
   .panel{display:none;}
   .panel.active{display:block;}
 
-  .gate{position:fixed; inset:0; background:rgba(11,61,46,0.97); display:flex; align-items:center; justify-content:center; z-index:50; padding:20px;}
+  .gate{position:fixed; inset:0; background:rgba(20,40,64,0.97); display:flex; align-items:center; justify-content:center; z-index:50; padding:20px;}
   .gate-card{background:var(--pitch); border:1px solid var(--line); border-radius:14px; padding:28px 24px; max-width:360px; width:100%; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.4);}
   .gate-card .ball{font-size:34px; margin-bottom:6px;}
   .gate-card h2{font-size:22px; margin:0 0 6px;}
-  .gate-card p{font-size:13px; color:rgba(246,243,234,0.65); margin:0 0 18px; line-height:1.5;}
+  .gate-card p{font-size:13px; color:rgba(242,239,230,0.65); margin:0 0 18px; line-height:1.5;}
   .gate-card input{width:100%; padding:12px 14px; border-radius:8px; border:1px solid var(--line); background:rgba(255,255,255,0.06); color:var(--chalk); font-size:15px; margin-bottom:12px; font-family:'Inter',sans-serif;}
   .gate-card input:focus{outline:2px solid var(--gold); border-color:var(--gold);}
   .btn{width:100%; padding:12px 14px; border-radius:8px; border:none; background:var(--gold); color:var(--ink); font-weight:700; font-size:14px; cursor:pointer; font-family:'Inter',sans-serif; letter-spacing:0.01em;}
@@ -78,7 +110,7 @@
   .section-title:first-child{margin-top:0;}
   .section-title .num{font-family:'Anton',sans-serif; font-size:13px; color:var(--ink); background:var(--gold); padding:3px 8px; border-radius:4px;}
   .section-title h2{font-size:18px; margin:0; letter-spacing:0.02em;}
-  .section-desc{font-size:12.5px; color:rgba(246,243,234,0.55); margin:-6px 0 16px; line-height:1.5;}
+  .section-desc{font-size:12.5px; color:rgba(242,239,230,0.55); margin:-6px 0 16px; line-height:1.5;}
 
   .groups-grid{display:grid; grid-template-columns:1fr; gap:12px;}
   @media(min-width:680px){.groups-grid{grid-template-columns:1fr 1fr;}}
@@ -96,14 +128,14 @@
   .third-counter{font-family:'Space Mono',monospace; font-size:13px; color:var(--gold-soft); margin-bottom:10px;}
   .third-list{display:flex; flex-direction:column; gap:8px;}
   .third-row{display:flex; align-items:center; gap:12px; padding:10px 12px; background:var(--pitch); border:1px solid var(--line); border-radius:8px; cursor:pointer;}
-  .third-row.checked{border-color:var(--grass-bright); background:rgba(63,194,116,0.1);}
+  .third-row.checked{border-color:var(--grass-bright); background:rgba(90,139,196,0.12);}
   .third-row input{accent-color:var(--grass-bright); width:18px; height:18px;}
   .third-row .grp-tag{font-family:'Space Mono',monospace; font-size:11px; color:var(--ink); background:var(--gold-soft); padding:2px 7px; border-radius:4px; font-weight:700;}
   .third-row .tname{font-size:13.5px; flex:1;}
 
   .round-block{margin-bottom:22px;}
   .round-label{font-family:'Anton',sans-serif; font-size:13px; letter-spacing:0.08em; color:var(--gold-soft); border-bottom:1px solid var(--line); padding-bottom:6px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;}
-  .round-label .tag{font-family:'Space Mono',monospace; font-size:10px; color:rgba(246,243,234,0.4); text-transform:none; letter-spacing:0;}
+  .round-label .tag{font-family:'Space Mono',monospace; font-size:10px; color:rgba(242,239,230,0.4); text-transform:none; letter-spacing:0;}
   .match{display:flex; flex-direction:column; gap:0; background:var(--pitch); border:1px solid var(--line); border-radius:8px; margin-bottom:8px; overflow:hidden;}
   .match.locked{opacity:0.35;}
   .pick-row{display:flex; align-items:center; gap:10px; padding:9px 12px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.06); transition:background .12s;}
@@ -114,17 +146,17 @@
   .pick-row.selected .dot{background:var(--gold);}
   .pick-row .pname{font-size:13.5px;}
   .pick-row.selected .pname{color:var(--gold-soft); font-weight:600;}
-  .placeholder-note{font-size:12px; color:rgba(246,243,234,0.45); padding:10px 12px; font-style:italic;}
+  .placeholder-note{font-size:12px; color:rgba(242,239,230,0.45); padding:10px 12px; font-style:italic;}
   .champion-banner{margin-top:8px; padding:22px; text-align:center; border-radius:12px; background:linear-gradient(160deg, var(--gold) 0%, var(--gold-soft) 100%); color:var(--ink);}
   .champion-banner .ct{font-family:'Space Mono',monospace; font-size:11px; letter-spacing:0.2em; text-transform:uppercase; opacity:0.7;}
   .champion-banner .cn{font-family:'Anton',sans-serif; font-size:26px; margin-top:4px;}
 
-  .compare-empty{text-align:center; padding:50px 20px; color:rgba(246,243,234,0.5); font-size:13.5px;}
+  .compare-empty{text-align:center; padding:50px 20px; color:rgba(242,239,230,0.5); font-size:13.5px;}
   .champ-cards{display:flex; gap:10px; overflow-x:auto; padding-bottom:6px; margin-bottom:6px;}
   .champ-card{flex:none; width:140px; background:var(--pitch); border:1px solid var(--line); border-radius:10px; padding:14px 12px; text-align:center;}
   .champ-card .pn{font-family:'Space Mono',monospace; font-size:11px; color:var(--gold-soft); margin-bottom:8px; word-break:break-word;}
   .champ-card .ct{font-family:'Anton',sans-serif; font-size:15px; line-height:1.2; min-height:36px; display:flex; align-items:center; justify-content:center;}
-  .champ-card .ct.empty{color:rgba(246,243,234,0.3); font-family:'Inter',sans-serif; font-size:11px;}
+  .champ-card .ct.empty{color:rgba(242,239,230,0.3); font-family:'Inter',sans-serif; font-size:11px;}
 
   .cmp-table-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:10px;}
   table.cmp{border-collapse:collapse; width:100%; font-size:12.5px; min-width:520px;}
@@ -135,9 +167,9 @@
 
   .refresh-row{display:flex; justify-content:flex-end; margin-bottom:14px;}
   .refresh-row button{font-size:12px; padding:7px 12px; width:auto;}
-  .save-indicator{font-family:'Space Mono',monospace; font-size:11px; color:rgba(246,243,234,0.4); text-align:center; margin-top:14px; height:14px;}
+  .save-indicator{font-family:'Space Mono',monospace; font-size:11px; color:rgba(242,239,230,0.4); text-align:center; margin-top:14px; height:14px;}
 
-  footer.note{text-align:center; font-size:11px; color:rgba(246,243,234,0.35); margin-top:30px; padding:0 16px;}
+  footer.note{text-align:center; font-size:11px; color:rgba(242,239,230,0.35); margin-top:30px; padding:0 16px;}
 </style>
 </head>
 <body>
@@ -154,8 +186,42 @@
 
 <header>
   <div class="eyebrow">USA · CANADA · MEXICO — JUNE 11 – JULY 19</div>
-  <h1 class="display">World Cup <span>2026</span> Picks</h1>
-  <div class="sub">Predict every group, pick your best third-place teams, fill the bracket.</div>
+  <div class="header-top">
+    <svg class="badge" width="56" height="56" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <defs>
+        <clipPath id="circleClip">
+          <circle cx="100" cy="100" r="92"/>
+        </clipPath>
+      </defs>
+      <circle cx="100" cy="100" r="96" fill="#1B3556"/>
+      <circle cx="100" cy="100" r="92" fill="#F2EFE6"/>
+      <g clip-path="url(#circleClip)">
+        <rect x="8" y="8" width="184" height="184" fill="#F2EFE6"/>
+        <rect x="8" y="34" width="184" height="14" fill="#A33D3D"/>
+        <rect x="8" y="62" width="184" height="14" fill="#A33D3D"/>
+        <rect x="8" y="90" width="184" height="14" fill="#A33D3D"/>
+        <rect x="8" y="118" width="184" height="14" fill="#A33D3D"/>
+        <rect x="8" y="146" width="184" height="14" fill="#A33D3D"/>
+        <rect x="8" y="174" width="184" height="14" fill="#A33D3D"/>
+        <rect x="8" y="8" width="92" height="60" fill="#1B3556"/>
+        <polygon points="36.0,26.0 38.9,34.0 47.4,34.3 40.8,39.5 43.1,47.7 36.0,43.0 28.9,47.7 31.2,39.5 24.6,34.3 33.1,34.0" fill="#F2EFE6"/>
+      </g>
+      <circle cx="100" cy="92" r="34" fill="#F2EFE6" stroke="#1B3556" stroke-width="3"/>
+      <polygon points="100,76 110,84 106,96 94,96 90,84" fill="#1B3556"/>
+      <line x1="100" y1="76" x2="100" y2="66" stroke="#1B3556" stroke-width="2.5"/>
+      <line x1="110" y1="84" x2="119" y2="78" stroke="#1B3556" stroke-width="2.5"/>
+      <line x1="106" y1="96" x2="111" y2="107" stroke="#1B3556" stroke-width="2.5"/>
+      <line x1="94" y1="96" x2="89" y2="107" stroke="#1B3556" stroke-width="2.5"/>
+      <line x1="90" y1="84" x2="81" y2="78" stroke="#1B3556" stroke-width="2.5"/>
+      <polygon points="18,140 182,140 182,166 100,176 18,166" fill="#1B3556"/>
+      <text x="100" y="155" font-family="Arial, sans-serif" font-size="15" font-weight="700" fill="#F2EFE6" letter-spacing="1.5" text-anchor="middle">WORLD CUP</text>
+      <text x="100" y="171" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="#F2EFE6" letter-spacing="2" text-anchor="middle">2026</text>
+    </svg>
+    <div>
+      <h1 class="display">World Cup <span>2026</span> Picks</h1>
+      <div class="sub">Predict every group, pick your best third-place teams, fill the bracket.</div>
+    </div>
+  </div>
   <div class="who-bar">
     <div class="me-chip">Playing as <b id="meLabel">—</b> <button id="switchName">switch</button></div>
     <div class="avatars" id="avatarList"></div>
@@ -165,8 +231,10 @@
 <div class="tabs">
   <div class="tab active" data-tab="picks">My Picks</div>
   <div class="tab" data-tab="compare">Compare</div>
+  <div class="tab" data-tab="live">Live</div>
 </div>
 
+<div class="layout">
 <main>
   <div class="panel active" id="panel-picks">
 
@@ -191,6 +259,30 @@
     <div id="compareArea"><div class="compare-empty">Loading…</div></div>
   </div>
 </main>
+
+<aside class="panel" id="panel-live">
+  <div class="live-head">
+    <h2>Live &amp; Standings</h2>
+    <button class="btn btn-ghost" id="liveRefreshBtn">↻</button>
+  </div>
+  <div class="live-updated" id="liveUpdated">Loading…</div>
+
+  <div class="live-section">
+    <div class="live-section-title">Playing Now</div>
+    <div id="liveNowList"><div class="live-empty">Loading…</div></div>
+  </div>
+
+  <div class="live-section">
+    <div class="live-section-title">Playing Tomorrow</div>
+    <div id="liveTomorrowList"><div class="live-empty">Loading…</div></div>
+  </div>
+
+  <div class="live-section">
+    <div class="live-section-title">Group Standings</div>
+    <div id="standingsList"><div class="live-empty">Loading…</div></div>
+  </div>
+</aside>
+</div>
 
 <footer class="note">Picks save to this site's Cloudflare KV store and are visible to anyone with the link. Don't enter anything private.</footer>
 
@@ -325,9 +417,93 @@ document.querySelectorAll('.tab').forEach(t => {
     t.classList.add('active');
     document.getElementById('panel-' + t.dataset.tab).classList.add('active');
     if(t.dataset.tab === 'compare') loadCompare();
+    if(t.dataset.tab === 'live') loadLiveRail();
   });
 });
 document.getElementById('refreshBtn').addEventListener('click', loadCompare);
+document.getElementById('liveRefreshBtn').addEventListener('click', loadLiveRail);
+
+// ---------- Live & Standings (right rail) ----------
+async function loadLiveRail(){
+  const [standingsRes, scheduleRes] = await Promise.all([
+    fetch('/api/standings').then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch('/api/schedule').then(r => r.ok ? r.json() : null).catch(() => null),
+  ]);
+
+  const updatedAt = (scheduleRes && scheduleRes.updatedAt) || (standingsRes && standingsRes.updatedAt);
+  document.getElementById('liveUpdated').textContent = updatedAt
+    ? 'Updated ' + new Date(updatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+    : 'Not synced yet — check back after the first daily sync.';
+
+  renderFixtureBuckets(scheduleRes ? scheduleRes.fixtures : []);
+  renderStandings(standingsRes ? standingsRes.standings : {});
+}
+
+function renderFixtureBuckets(fixtures){
+  const now = new Date();
+  const tomorrow = new Date(now); tomorrow.setDate(now.getDate() + 1);
+  const tomorrowStr = tomorrow.toDateString();
+
+  const live = [], tomorrowList = [];
+  (fixtures || []).forEach(f => {
+    if(!f.kickoff) return;
+    const k = new Date(f.kickoff);
+    const end = new Date(k.getTime() + 135 * 60000); // ~2h15m match window, no scores ever stored or shown
+    if(now >= k && now <= end){
+      live.push(f);
+    } else if(k.toDateString() === tomorrowStr){
+      tomorrowList.push(f);
+    }
+  });
+  live.sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
+  tomorrowList.sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
+
+  const fmtTime = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+  const nowEl = document.getElementById('liveNowList');
+  nowEl.innerHTML = live.length ? live.map(f => `
+    <div class="fixture-row">
+      <span class="live-dot"></span>
+      <span class="grp-tag">${f.group || ''}</span>
+      <span class="teams">${f.home} vs ${f.away}</span>
+    </div>
+  `).join('') : '<div class="live-empty">No matches in progress right now.</div>';
+
+  const tmrEl = document.getElementById('liveTomorrowList');
+  tmrEl.innerHTML = tomorrowList.length ? tomorrowList.map(f => `
+    <div class="fixture-row">
+      <span class="grp-tag">${f.group || ''}</span>
+      <span class="teams">${f.home} vs ${f.away}</span>
+      <span class="time">${fmtTime(f.kickoff)}</span>
+    </div>
+  `).join('') : '<div class="live-empty">No matches scheduled tomorrow.</div>';
+}
+
+function renderStandings(standings){
+  const el = document.getElementById('standingsList');
+  const letters = Object.keys(standings || {}).sort();
+  if(letters.length === 0){
+    el.innerHTML = '<div class="live-empty">Standings haven\'t synced yet.</div>';
+    return;
+  }
+  el.innerHTML = letters.map(letter => {
+    const rows = standings[letter] || [];
+    return `<div class="standings-group">
+      <div class="sg-title">GROUP ${letter}</div>
+      <table class="standings">
+        <thead><tr><th style="text-align:left">Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr></thead>
+        <tbody>
+          ${rows.map(r => `<tr><td class="team">${r.team}</td><td>${r.played}</td><td>${r.won}</td><td>${r.draw}</td><td>${r.lost}</td><td>${r.gd}</td><td>${r.points}</td></tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+  }).join('');
+}
+
+// Right rail is tournament-wide, not tied to a player — load it regardless of join status,
+// and keep "Playing Now" fresh without needing a fresh daily sync.
+loadLiveRail();
+setInterval(loadLiveRail, 5 * 60 * 1000);
 
 // ---------- Groups ----------
 function renderGroups(){
