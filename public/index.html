@@ -85,14 +85,17 @@
   .fixture-row .time{font-family:'Space Mono',monospace; font-size:11px; color:rgba(242,239,230,0.5); margin-left:auto;}
   .live-dot{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--grass-bright); animation:livePulse 1.4s infinite;}
   @keyframes livePulse{0%,100%{opacity:1;}50%{opacity:0.25;}}
-  .standings-group{margin-bottom:14px;}
-  .standings-group:last-child{margin-bottom:0;}
-  .standings-group .sg-title{font-family:'Space Mono',monospace; font-size:11px; color:rgba(242,239,230,0.55); margin-bottom:4px;}
-  table.standings{width:100%; border-collapse:collapse; font-size:11px;}
-  table.standings th, table.standings td{padding:3px 4px; text-align:center; border-bottom:1px solid rgba(255,255,255,0.06);}
+  .standings-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch;}
+  table.standings{min-width:100%; border-collapse:collapse; font-size:11px; table-layout:auto;}
+  table.standings th, table.standings td{padding:3px 6px 3px 2px; text-align:center; border-bottom:1px solid rgba(255,255,255,0.06); white-space:nowrap;}
   table.standings th{color:rgba(242,239,230,0.45); font-weight:500;}
-  table.standings td.team{text-align:left; font-weight:600;}
+  table.standings th.team, table.standings td.team{text-align:left; font-weight:600; padding-right:14px;}
   table.standings tbody tr:last-child td{border-bottom:none;}
+  table.standings tr.sg-row td.sg-title{
+    font-family:'Space Mono',monospace; font-size:11px; font-weight:700; color:rgba(242,239,230,0.55);
+    text-align:left; padding:10px 4px 4px; border-bottom:1px solid var(--line);
+  }
+  table.standings tr.sg-row:first-child td.sg-title{padding-top:2px;}
 
   #leaderboardBox{background:var(--pitch); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin:18px 16px 0; max-width:868px; margin-left:auto; margin-right:auto;}
   @media(min-width:1000px){#leaderboardBox{max-width:1148px;}}
@@ -319,7 +322,7 @@
 
   <div class="live-section">
     <div class="live-section-title">Group Standings</div>
-    <div id="standingsList"><div class="live-empty">Loading…</div></div>
+    <div id="standingsList" class="standings-scroll"><div class="live-empty">Loading…</div></div>
   </div>
 </aside>
 </div>
@@ -585,18 +588,20 @@ function renderStandings(standings){
     el.innerHTML = '<div class="live-empty">Standings haven\'t synced yet.</div>';
     return;
   }
-  el.innerHTML = letters.map(letter => {
+  // One shared table (not one per group) so the browser sizes the Team column once,
+  // based on the single longest country name across every group — keeping every
+  // group's columns aligned with each other automatically, no guessed widths.
+  const body = letters.map(letter => {
     const rows = standings[letter] || [];
-    return `<div class="standings-group">
-      <div class="sg-title">GROUP ${letter}</div>
-      <table class="standings">
-        <thead><tr><th style="text-align:left">Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr></thead>
-        <tbody>
-          ${rows.map(r => `<tr><td class="team">${r.team}</td><td>${r.played}</td><td>${r.won}</td><td>${r.draw}</td><td>${r.lost}</td><td>${r.gd}</td><td>${r.points}</td></tr>`).join('')}
-        </tbody>
-      </table>
-    </div>`;
+    const groupHeaderRow = `<tr class="sg-row"><td class="sg-title" colspan="7">GROUP ${letter}</td></tr>`;
+    const teamRows = rows.map(r => `<tr><td class="team">${r.team}</td><td>${r.played}</td><td>${r.won}</td><td>${r.draw}</td><td>${r.lost}</td><td>${r.gd}</td><td>${r.points}</td></tr>`).join('');
+    return groupHeaderRow + teamRows;
   }).join('');
+
+  el.innerHTML = `<table class="standings">
+    <thead><tr><th class="team">Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr></thead>
+    <tbody>${body}</tbody>
+  </table>`;
 }
 
 // Right rail is tournament-wide, not tied to a player — load it regardless of join status,
