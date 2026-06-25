@@ -1,0 +1,10 @@
+name = "wc26-picks-pool"
+compatibility_date = "2026-06-01"
+pages_build_output_dir = "public"
+
+# Create this namespace first with:
+#   npx wrangler kv namespace create wc26_picks
+# then paste the id it gives you below.
+[[kv_namespaces]]
+binding = "PICKS_KV"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
