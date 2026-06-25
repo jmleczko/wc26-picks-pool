@@ -126,6 +126,8 @@
   .live-dot{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--grass-bright); animation:livePulse 1.4s infinite;}
   @keyframes livePulse{0%,100%{opacity:1;}50%{opacity:0.25;}}
   .standings-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch;}
+  .rank-scroll{max-height:240px; overflow-y:auto; border:1px solid var(--line); border-radius:8px; padding:2px 8px;}
+  .rank-scroll .fixture-row .grp-tag{background:var(--grass-bright); min-width:20px; text-align:center;}
   table.standings{min-width:100%; border-collapse:collapse; font-size:11px; table-layout:auto;}
   table.standings th, table.standings td{padding:3px 6px 3px 2px; text-align:center; border-bottom:1px solid rgba(255,255,255,0.06); white-space:nowrap;}
   table.standings th{color:rgba(242,239,230,0.45); font-weight:500;}
@@ -366,6 +368,11 @@
     <div class="live-section-title">Group Standings</div>
     <div id="standingsList" class="standings-scroll"><div class="live-empty">Loading…</div></div>
   </div>
+
+  <div class="live-section">
+    <div class="live-section-title">FIFA World Ranking (June 11)</div>
+    <div id="rankList" class="rank-scroll"></div>
+  </div>
 </aside>
 </div>
 
@@ -389,9 +396,9 @@
 <script>
 const GROUPS = {
   A: ['Mexico','South Africa','South Korea','Czech Republic'],
-  B: ['Canada','Bosnia and Herzegovina','Qatar','Switzerland'],
+  B: ['Canada','BIH','Qatar','Switzerland'],
   C: ['Brazil','Morocco','Haiti','Scotland'],
-  D: ['United States','Paraguay','Australia','Turkey'],
+  D: ['USA','Paraguay','Australia','Turkey'],
   E: ['Germany','Curaçao','Ivory Coast','Ecuador'],
   F: ['Netherlands','Japan','Sweden','Tunisia'],
   G: ['Belgium','Egypt','Iran','New Zealand'],
@@ -402,6 +409,67 @@ const GROUPS = {
   L: ['England','Croatia','Ghana','Panama']
 };
 const GROUP_LETTERS = Object.keys(GROUPS);
+
+// ---------- Team display: name aliases, flags, FIFA ranking ----------
+// Handles the gap between our own short names (USA, BIH) and whatever spelling the live
+// standings/fixtures API happens to use (United States, Bosnia and Herzegovina, Czechia,
+// Türkiye, Korea Republic, IR Iran, Côte d'Ivoire, Cabo Verde) — both sides get mapped to
+// one canonical name before display, comparison, or flag/rank lookup.
+const NAME_ALIASES = {
+  'United States':'USA', 'USA':'USA',
+  'Bosnia and Herzegovina':'BIH', 'BIH':'BIH',
+  'Czechia':'Czech Republic', 'Czech Republic':'Czech Republic',
+  'Türkiye':'Turkey', 'Turkey':'Turkey',
+  "Côte d'Ivoire":'Ivory Coast', 'Ivory Coast':'Ivory Coast',
+  'Korea Republic':'South Korea', 'South Korea':'South Korea',
+  'IR Iran':'Iran', 'Iran':'Iran',
+  'Cabo Verde':'Cape Verde', 'Cape Verde':'Cape Verde',
+  'Congo DR':'DR Congo', 'DR Congo':'DR Congo',
+};
+function canon(name){ return NAME_ALIASES[name] || name; }
+
+const TEAM_ISO = {
+  'Mexico':'MX','South Africa':'ZA','South Korea':'KR','Czech Republic':'CZ',
+  'Canada':'CA','BIH':'BA','Qatar':'QA','Switzerland':'CH',
+  'Brazil':'BR','Morocco':'MA','Haiti':'HT',
+  'USA':'US','Paraguay':'PY','Australia':'AU','Turkey':'TR',
+  'Germany':'DE','Curaçao':'CW','Ivory Coast':'CI','Ecuador':'EC',
+  'Netherlands':'NL','Japan':'JP','Sweden':'SE','Tunisia':'TN',
+  'Belgium':'BE','Egypt':'EG','Iran':'IR','New Zealand':'NZ',
+  'Spain':'ES','Cape Verde':'CV','Saudi Arabia':'SA','Uruguay':'UY',
+  'France':'FR','Senegal':'SN','Iraq':'IQ','Norway':'NO',
+  'Argentina':'AR','Algeria':'DZ','Austria':'AT','Jordan':'JO',
+  'Portugal':'PT','DR Congo':'CD','Uzbekistan':'UZ','Colombia':'CO',
+  'Croatia':'HR','Ghana':'GH','Panama':'PA',
+};
+function flagEmoji(iso2){
+  return iso2.toUpperCase().replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt(0)));
+}
+function subdivisionFlag(tag){ // England/Scotland use a tag-sequence emoji, not a plain ISO code
+  let s = '\u{1F3F4}';
+  for(const ch of tag) s += String.fromCodePoint(0xE0000 + ch.charCodeAt(0));
+  s += String.fromCodePoint(0xE0000 + 0x7F);
+  return s;
+}
+const SPECIAL_FLAGS = { 'England': subdivisionFlag('gbeng'), 'Scotland': subdivisionFlag('gbsct') };
+function flag(name){
+  const c = canon(name);
+  if(SPECIAL_FLAGS[c]) return SPECIAL_FLAGS[c];
+  const iso = TEAM_ISO[c];
+  return iso ? flagEmoji(iso) : '';
+}
+function teamLabel(name){ return `${flag(name)} ${canon(name)}`; }
+
+// FIFA World Ranking as of June 11, 2026 (tournament's 48 qualified teams only)
+const FIFA_RANK = {
+  Argentina:1, Spain:2, France:3, England:4, Portugal:5, Brazil:6, Morocco:7, Netherlands:8,
+  Belgium:9, Germany:10, Croatia:11, Colombia:13, Mexico:14, Senegal:15, Uruguay:16, USA:17,
+  Japan:18, Switzerland:19, Iran:20, Turkey:22, Ecuador:23, Austria:24, 'South Korea':25,
+  Australia:27, Algeria:28, Egypt:29, Canada:30, Norway:31, 'Ivory Coast':33, Panama:34,
+  Sweden:38, 'Czech Republic':40, Paraguay:41, Scotland:42, Tunisia:45, 'DR Congo':46,
+  Uzbekistan:50, Qatar:56, Iraq:57, 'South Africa':60, 'Saudi Arabia':61, Jordan:63, BIH:64,
+  'Cape Verde':67, Ghana:73, 'Curaçao':82, Haiti:83, 'New Zealand':85,
+};
 
 let myName = null;
 let picks = null;
@@ -429,9 +497,9 @@ function normalizePicks(raw){
   GROUP_LETTERS.forEach(letter => {
     const g = raw && raw.groups && raw.groups[letter];
     if(Array.isArray(g)){
-      groups[letter] = { top2: [g[0], g[1]].filter(Boolean), third: g[2] || null };
+      groups[letter] = { top2: [g[0], g[1]].filter(Boolean).map(canon), third: g[2] ? canon(g[2]) : null };
     } else if(g && Array.isArray(g.top2)){
-      groups[letter] = { top2: [...g.top2], third: g.third || null };
+      groups[letter] = { top2: g.top2.map(canon), third: g.third ? canon(g.third) : null };
     } else {
       const teams = GROUPS[letter];
       groups[letter] = { top2: [teams[0], teams[1]], third: teams[2] };
@@ -711,7 +779,7 @@ function renderFixtureBuckets(fixtures){
     <div class="fixture-row">
       <span class="live-dot"></span>
       <span class="grp-tag">${f.group || ''}</span>
-      <span class="teams">${f.home} vs ${f.away}</span>
+      <span class="teams">${flag(f.home)} ${canon(f.home)} vs ${flag(f.away)} ${canon(f.away)}</span>
     </div>
   `).join('') : '<div class="live-empty">No matches in progress right now.</div>';
 
@@ -719,7 +787,7 @@ function renderFixtureBuckets(fixtures){
   tmrEl.innerHTML = tomorrowList.length ? tomorrowList.map(f => `
     <div class="fixture-row">
       <span class="grp-tag">${f.group || ''}</span>
-      <span class="teams">${f.home} vs ${f.away}</span>
+      <span class="teams">${flag(f.home)} ${canon(f.home)} vs ${flag(f.away)} ${canon(f.away)}</span>
       <span class="time">${fmtTime(f.kickoff)}</span>
     </div>
   `).join('') : '<div class="live-empty">No matches scheduled tomorrow.</div>';
@@ -738,7 +806,7 @@ function renderStandings(standings){
   const body = letters.map(letter => {
     const rows = standings[letter] || [];
     const groupHeaderRow = `<tr class="sg-row"><td class="sg-title" colspan="7">GROUP ${letter}</td></tr>`;
-    const teamRows = rows.map(r => `<tr><td class="team">${r.team}</td><td>${r.played}</td><td>${r.won}</td><td>${r.draw}</td><td>${r.lost}</td><td>${r.gd}</td><td>${r.points}</td></tr>`).join('');
+    const teamRows = rows.map(r => `<tr><td class="team">${flag(r.team)} ${canon(r.team)}</td><td>${r.played}</td><td>${r.won}</td><td>${r.draw}</td><td>${r.lost}</td><td>${r.gd}</td><td>${r.points}</td></tr>`).join('');
     return groupHeaderRow + teamRows;
   }).join('');
 
@@ -747,6 +815,18 @@ function renderStandings(standings){
     <tbody>${body}</tbody>
   </table>`;
 }
+
+function renderFifaRanking(){
+  const el = document.getElementById('rankList');
+  const sorted = Object.entries(FIFA_RANK).sort((a, b) => a[1] - b[1]);
+  el.innerHTML = sorted.map(([team, rank]) => `
+    <div class="fixture-row">
+      <span class="grp-tag">${rank}</span>
+      <span class="teams">${flag(team)} ${team}</span>
+    </div>
+  `).join('');
+}
+renderFifaRanking();
 
 // Right rail is tournament-wide, not tied to a player — load it regardless of join status,
 // and keep "Playing Now" fresh without needing a fresh daily sync.
@@ -770,7 +850,7 @@ function renderGroups(){
       const row = document.createElement('div');
       row.className = 'team-row' + (isOut ? ' is-out' : '');
       row.innerHTML = `
-        <div class="team-name">${team}</div>
+        <div class="team-name">${flag(team)} ${team}</div>
         <div class="pick-pills">
           <button class="pick-pill advancing ${isAdvancing ? 'active' : ''}" data-l="${letter}" data-team="${encodeURIComponent(team)}" data-action="top2" ${locked ? 'disabled' : ''}>Advancing</button>
           <button class="pick-pill third ${isThird ? 'active' : ''}" data-l="${letter}" data-team="${encodeURIComponent(team)}" data-action="third" ${(isAdvancing || locked) ? 'disabled' : ''}>3rd</button>
@@ -828,7 +908,7 @@ function renderThird(){
     row.innerHTML = `
       <input type="checkbox" data-l="${letter}" ${checked?'checked':''} ${locked ? 'disabled' : ''}>
       <span class="grp-tag">${letter}</span>
-      <span class="tname">${team || '—'}${locked ? ' 🔒' : ''}</span>`;
+      <span class="tname">${team ? flag(team) + ' ' + team : '—'}${locked ? ' 🔒' : ''}</span>`;
     list.appendChild(row);
   });
   document.getElementById('thirdCounter').textContent = `${picks.third.length} / 8 selected`;
@@ -887,7 +967,7 @@ async function loadCompare(){
     html += `<tr><td class="grp">${letter}</td>`;
     all.forEach(p => {
       const g = p.picks.groups && p.picks.groups[letter];
-      html += `<td>${g ? g.top2.join(' &amp; ') : '—'}</td>`;
+      html += `<td>${g ? g.top2.map(teamLabel).join(' &amp; ') : '—'}</td>`;
     });
     html += `</tr>`;
   });
@@ -897,7 +977,10 @@ async function loadCompare(){
   html += `<div class="cmp-table-wrap"><table class="cmp"><thead><tr><th>Player</th><th>Picked to advance as a third-place team</th></tr></thead><tbody>`;
   all.forEach(p => {
     const letters = p.picks.third || [];
-    const names = letters.map(l => (p.picks.groups[l] && p.picks.groups[l].third) || l).join(' · ');
+    const names = letters.map(l => {
+      const team = p.picks.groups[l] && p.picks.groups[l].third;
+      return team ? teamLabel(team) : l;
+    }).join(' · ');
     html += `<tr><td>${p.name}</td><td>${names || '—'}</td></tr>`;
   });
   html += `</tbody></table></div>`;
@@ -917,9 +1000,9 @@ function computeScore(picks, standings){
   GROUP_LETTERS.forEach(letter => {
     const table = standings[letter];
     if(!table || table.length < 3) return; // group not far enough along to have a real table yet
-    const actualTop2 = [table[0].team, table[1].team];
+    const actualTop2 = [canon(table[0].team), canon(table[1].team)];
     const predictedTop2 = (picks.groups && picks.groups[letter] && picks.groups[letter].top2) || [];
-    predictedTop2.forEach(t => { if(actualTop2.includes(t)) score += 1; });
+    predictedTop2.forEach(t => { if(actualTop2.includes(canon(t))) score += 1; });
     actualThirds.push({ letter, points: table[2].points, gd: table[2].gd });
   });
 
