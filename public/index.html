@@ -56,8 +56,44 @@
   .rename-box input{padding:7px 10px; border-radius:6px; border:1px solid var(--line); background:rgba(255,255,255,0.06); color:var(--chalk); font-size:13px; font-family:'Inter',sans-serif; width:160px;}
   .rename-box .btn{width:auto; padding:7px 12px; font-size:12px;}
   .lock-banner{
-    background:rgba(122,46,46,0.25); border:1px solid var(--gold-soft); color:var(--gold-soft);
+    background:rgba(59,110,165,0.18); border:1px solid var(--grass-bright); color:var(--chalk);
     font-size:12.5px; padding:10px 14px; border-radius:8px; margin-bottom:18px; line-height:1.4;
+  }
+
+  .chat-widget{position:fixed; bottom:18px; right:18px; z-index:60; font-family:'Inter',sans-serif;}
+  .chat-toggle{
+    background:var(--gold); color:var(--ink); border:none; border-radius:999px; padding:12px 18px;
+    font-weight:700; font-size:13px; cursor:pointer; box-shadow:0 6px 20px rgba(0,0,0,0.35);
+  }
+  .chat-toggle:hover{background:var(--gold-soft);}
+  .chat-panel{
+    display:none; flex-direction:column; width:320px; max-width:calc(100vw - 36px); height:420px;
+    background:var(--pitch); border:1px solid var(--line); border-radius:14px; overflow:hidden;
+    box-shadow:0 12px 40px rgba(0,0,0,0.45); position:absolute; bottom:0; right:0;
+  }
+  .chat-widget.open .chat-panel{display:flex;}
+  .chat-widget.open .chat-toggle{display:none;}
+  .chat-panel-head{
+    display:flex; align-items:center; justify-content:space-between; padding:12px 14px;
+    background:var(--pitch-dark); border-bottom:1px solid var(--line);
+    font-family:'Anton',sans-serif; font-size:14px; letter-spacing:0.03em; text-transform:uppercase; color:var(--gold-soft);
+  }
+  .chat-close{background:none; border:none; color:rgba(242,239,230,0.6); font-size:15px; cursor:pointer; padding:2px 4px;}
+  .chat-close:hover{color:var(--chalk);}
+  .chat-messages{flex:1; overflow-y:auto; padding:12px 14px; display:flex; flex-direction:column; gap:10px;}
+  .chat-msg{font-size:13px; line-height:1.4;}
+  .chat-msg .cm-name{font-weight:700; color:var(--gold-soft); margin-right:6px;}
+  .chat-msg .cm-time{font-family:'Space Mono',monospace; font-size:10px; color:rgba(242,239,230,0.4); margin-left:6px;}
+  .chat-msg .cm-text{color:var(--chalk); word-wrap:break-word;}
+  .chat-input-row{display:flex; gap:8px; padding:10px 12px; border-top:1px solid var(--line); background:var(--pitch-dark);}
+  .chat-input-row input{
+    flex:1; padding:8px 10px; border-radius:8px; border:1px solid var(--line);
+    background:rgba(255,255,255,0.06); color:var(--chalk); font-size:13px; font-family:'Inter',sans-serif;
+  }
+  .chat-input-row .btn{width:auto; padding:8px 14px; font-size:12.5px;}
+  @media(max-width:480px){
+    .chat-widget{bottom:12px; right:12px;}
+    .chat-panel{width:calc(100vw - 24px); height:60vh;}
   }
   .avatars{display:flex; gap:-6px;}
   .avatar{width:26px;height:26px;border-radius:50%; background:var(--grass); color:var(--ink); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; border:2px solid var(--pitch-dark); margin-left:-6px; font-family:'Space Mono',monospace;}
@@ -285,7 +321,7 @@
 <main>
   <div class="panel active" id="panel-picks">
 
-    <div id="lockBanner" class="lock-banner" style="display:none;">🔒 Some groups have locked, automatically, once their first real match kicked off — look for the 🔒 on a group below. Everything else stays editable until its own group starts.</div>
+    <div id="lockBanner" class="lock-banner">🤝 Honor system for now — please refrain from making changes once games have started. Everyone will see you are cheating. I know who you are!! Once the Round of 32 bracket opens, picks will lock automatically the moment each match kicks off — get your picks in early!</div>
 
     <div class="section-title"><span class="num">1</span><h2>Group Stage</h2></div>
     <div class="section-desc">For each group, tap the 2 teams you think advance automatically. Then tap which of the other 2 you think finishes 3rd — that's the one with a shot at a wildcard spot below.</div>
@@ -334,6 +370,21 @@
 </div>
 
 <footer class="note">Picks save to this site's Cloudflare KV store and are visible to anyone with the link. Don't enter anything private.</footer>
+
+<div id="chatWidget" class="chat-widget collapsed">
+  <button id="chatToggle" class="chat-toggle">💬 Trash Talk</button>
+  <div class="chat-panel">
+    <div class="chat-panel-head">
+      <span>💬 Trash Talk</span>
+      <button id="chatClose" class="chat-close">✕</button>
+    </div>
+    <div id="chatMessages" class="chat-messages"><div class="live-empty">Loading…</div></div>
+    <div class="chat-input-row">
+      <input type="text" id="chatInput" placeholder="Say something…" maxlength="500" autocomplete="off">
+      <button id="chatSend" class="btn">Send</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const GROUPS = {
@@ -553,9 +604,13 @@ function computeGroupLockTimes(fixtures){
   return map;
 }
 function isGroupLocked(letter){
-  if(globalLocked) return true;
-  const t = groupLockAt[letter];
-  return t != null && Date.now() >= t;
+  // LOCKING DISABLED FOR THE GROUP STAGE — honor system for now (see the banner above the
+  // picks). Re-enable by uncommenting the two lines below once the Round of 32 bracket
+  // opens, so picks lock automatically as each knockout match kicks off.
+  return false;
+  // if(globalLocked) return true;
+  // const t = groupLockAt[letter];
+  // return t != null && Date.now() >= t;
 }
 
 async function checkLockStatus(){
@@ -566,7 +621,9 @@ async function checkLockStatus(){
   groupLockAt = computeGroupLockTimes(scheduleRes ? scheduleRes.fixtures : []);
   globalLocked = !!(globalRes && globalRes.locked);
   const anyLocked = globalLocked || GROUP_LETTERS.some(l => isGroupLocked(l));
-  document.getElementById('lockBanner').style.display = anyLocked ? 'block' : 'none';
+  // Lock-status banner toggling is paused while locking is disabled for the group stage —
+  // the banner shown right now is the static honor-system notice instead.
+  // document.getElementById('lockBanner').style.display = anyLocked ? 'block' : 'none';
   return anyLocked;
 }
 
@@ -913,6 +970,94 @@ setInterval(async () => {
   renderThird();
 }, 5 * 60 * 1000);
 
+// ---------- Trash Talk chat ----------
+let chatMessages = [];
+let chatOpen = false;
+let lastSeenChatCount = 0;
+
+async function apiGetChat(){
+  const r = await fetch('/api/chat');
+  return r.ok ? r.json() : [];
+}
+async function apiPostChat(name, text){
+  try{
+    const r = await fetch('/api/chat', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, text })
+    });
+    return r.ok ? r.json() : null;
+  }catch(e){ return null; }
+}
+function escapeHtml(s){
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+function fmtChatTime(iso){
+  return new Date(iso).toLocaleString([], { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+}
+
+function renderChat(){
+  const el = document.getElementById('chatMessages');
+  if(!chatMessages.length){
+    el.innerHTML = '<div class="live-empty">No trash talk yet — be the first.</div>';
+    return;
+  }
+  el.innerHTML = chatMessages.map(m => `
+    <div class="chat-msg">
+      <span class="cm-name">${escapeHtml(m.name)}</span><span class="cm-time">${fmtChatTime(m.at)}</span>
+      <div class="cm-text">${escapeHtml(m.text)}</div>
+    </div>
+  `).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+function updateChatToggleLabel(){
+  const toggle = document.getElementById('chatToggle');
+  const unread = chatMessages.length - lastSeenChatCount;
+  toggle.textContent = (!chatOpen && unread > 0) ? `💬 Trash Talk (${unread})` : '💬 Trash Talk';
+}
+
+async function loadChat(){
+  chatMessages = await apiGetChat();
+  renderChat();
+  updateChatToggleLabel();
+}
+
+document.getElementById('chatToggle').addEventListener('click', () => {
+  chatOpen = true;
+  document.getElementById('chatWidget').classList.add('open');
+  lastSeenChatCount = chatMessages.length;
+  updateChatToggleLabel();
+  loadChat();
+  document.getElementById('chatInput').focus();
+});
+document.getElementById('chatClose').addEventListener('click', () => {
+  chatOpen = false;
+  document.getElementById('chatWidget').classList.remove('open');
+});
+async function sendChat(){
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if(!text) return;
+  if(!myName){
+    alert('Enter the pool first so everyone knows who is talking trash.');
+    return;
+  }
+  input.value = '';
+  const updated = await apiPostChat(myName, text);
+  if(updated){
+    chatMessages = updated;
+    lastSeenChatCount = chatMessages.length;
+    renderChat();
+  }
+}
+document.getElementById('chatSend').addEventListener('click', sendChat);
+document.getElementById('chatInput').addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') sendChat();
+});
+
+loadChat();
+setInterval(loadChat, 15 * 1000);
 
 init();
 </script>
