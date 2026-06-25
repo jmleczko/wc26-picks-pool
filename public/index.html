@@ -285,7 +285,7 @@
 <main>
   <div class="panel active" id="panel-picks">
 
-    <div id="lockBanner" class="lock-banner" style="display:none;">🔒 Picks are locked — no further changes can be made. Compare and the leaderboard still update live.</div>
+    <div id="lockBanner" class="lock-banner" style="display:none;">🔒 Some groups have locked, automatically, once their first real match kicked off — look for the 🔒 on a group below. Everything else stays editable until its own group starts.</div>
 
     <div class="section-title"><span class="num">1</span><h2>Group Stage</h2></div>
     <div class="section-desc">For each group, tap the 2 teams you think advance automatically. Then tap which of the other 2 you think finishes 3rd — that's the one with a shot at a wildcard spot below.</div>
@@ -355,7 +355,8 @@ const GROUP_LETTERS = Object.keys(GROUPS);
 let myName = null;
 let picks = null;
 let saveTimer = null;
-let picksLocked = false;
+let groupLockAt = {};   // letter -> kickoff timestamp (ms) of that group's first real match
+let globalLocked = false; // optional manual override, still available via wc26:lock-at
 
 function safeKey(name){
   return name.trim().toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,60) || 'player';
@@ -541,11 +542,32 @@ async function loadEverything(){
   loadCompare();
 }
 
+function computeGroupLockTimes(fixtures){
+  const map = {};
+  (fixtures || []).forEach(f => {
+    if(!f.group || !f.kickoff) return;
+    const t = new Date(f.kickoff).getTime();
+    if(Number.isNaN(t)) return;
+    if(!(f.group in map) || t < map[f.group]) map[f.group] = t; // earliest kickoff = that group's first match
+  });
+  return map;
+}
+function isGroupLocked(letter){
+  if(globalLocked) return true;
+  const t = groupLockAt[letter];
+  return t != null && Date.now() >= t;
+}
+
 async function checkLockStatus(){
-  const r = await fetch('/api/lock-status').then(r => r.ok ? r.json() : null).catch(() => null);
-  picksLocked = !!(r && r.locked);
-  document.getElementById('lockBanner').style.display = picksLocked ? 'block' : 'none';
-  return picksLocked;
+  const [scheduleRes, globalRes] = await Promise.all([
+    fetch('/api/schedule').then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch('/api/lock-status').then(r => r.ok ? r.json() : null).catch(() => null),
+  ]);
+  groupLockAt = computeGroupLockTimes(scheduleRes ? scheduleRes.fixtures : []);
+  globalLocked = !!(globalRes && globalRes.locked);
+  const anyLocked = globalLocked || GROUP_LETTERS.some(l => isGroupLocked(l));
+  document.getElementById('lockBanner').style.display = anyLocked ? 'block' : 'none';
+  return anyLocked;
 }
 
 function renderAvatars(participants){
@@ -679,10 +701,11 @@ function renderGroups(){
   const grid = document.getElementById('groupsGrid');
   grid.innerHTML = '';
   GROUP_LETTERS.forEach(letter => {
+    const locked = isGroupLocked(letter);
     const card = document.createElement('div');
     card.className = 'group-card';
     const g = picks.groups[letter];
-    card.innerHTML = `<div class="gname">GROUP ${letter} <span>${g.top2.length}/2 advancing</span></div>`;
+    card.innerHTML = `<div class="gname">GROUP ${letter} <span>${g.top2.length}/2 advancing${locked ? ' · 🔒 locked' : ''}</span></div>`;
     GROUPS[letter].forEach(team => {
       const isAdvancing = g.top2.includes(team);
       const isThird = !isAdvancing && g.third === team;
@@ -692,19 +715,18 @@ function renderGroups(){
       row.innerHTML = `
         <div class="team-name">${team}</div>
         <div class="pick-pills">
-          <button class="pick-pill advancing ${isAdvancing ? 'active' : ''}" data-l="${letter}" data-team="${encodeURIComponent(team)}" data-action="top2" ${picksLocked ? 'disabled' : ''}>Advancing</button>
-          <button class="pick-pill third ${isThird ? 'active' : ''}" data-l="${letter}" data-team="${encodeURIComponent(team)}" data-action="third" ${(isAdvancing || picksLocked) ? 'disabled' : ''}>3rd</button>
+          <button class="pick-pill advancing ${isAdvancing ? 'active' : ''}" data-l="${letter}" data-team="${encodeURIComponent(team)}" data-action="top2" ${locked ? 'disabled' : ''}>Advancing</button>
+          <button class="pick-pill third ${isThird ? 'active' : ''}" data-l="${letter}" data-team="${encodeURIComponent(team)}" data-action="third" ${(isAdvancing || locked) ? 'disabled' : ''}>3rd</button>
         </div>`;
       card.appendChild(row);
     });
     grid.appendChild(card);
   });
 
-  if(picksLocked) return; // controls render disabled above; no need to wire up clicks
-
   grid.querySelectorAll('.pick-pill').forEach(btn => {
     btn.addEventListener('click', () => {
       const letter = btn.dataset.l;
+      if(isGroupLocked(letter)) return; // belt-and-suspenders; button is already disabled when locked
       const team = decodeURIComponent(btn.dataset.team);
       if(btn.dataset.action === 'top2') setTop2(letter, team);
       else setThird(letter, team);
@@ -743,21 +765,21 @@ function renderThird(){
   GROUP_LETTERS.forEach(letter => {
     const team = picks.groups[letter].third;
     const checked = picks.third.includes(letter);
+    const locked = isGroupLocked(letter);
     const row = document.createElement('div');
     row.className = 'third-row' + (checked ? ' checked' : '');
     row.innerHTML = `
-      <input type="checkbox" data-l="${letter}" ${checked?'checked':''} ${picksLocked ? 'disabled' : ''}>
+      <input type="checkbox" data-l="${letter}" ${checked?'checked':''} ${locked ? 'disabled' : ''}>
       <span class="grp-tag">${letter}</span>
-      <span class="tname">${team || '—'}</span>`;
+      <span class="tname">${team || '—'}${locked ? ' 🔒' : ''}</span>`;
     list.appendChild(row);
   });
   document.getElementById('thirdCounter').textContent = `${picks.third.length} / 8 selected`;
 
-  if(picksLocked) return; // controls render disabled above; no need to wire up clicks
-
   list.querySelectorAll('input').forEach(inp => {
     inp.addEventListener('change', () => {
       const l = inp.dataset.l;
+      if(isGroupLocked(l)){ inp.checked = picks.third.includes(l); return; } // belt-and-suspenders
       if(inp.checked){
         if(picks.third.length >= 8){ inp.checked = false; return; }
         picks.third.push(l);
@@ -883,15 +905,12 @@ document.getElementById('lbRefreshBtn').addEventListener('click', loadLeaderboar
 loadLeaderboard();
 setInterval(loadLeaderboard, 5 * 60 * 1000);
 
-// Re-check the lock deadline periodically too, so a tab left open before the cutoff
-// disables editing on its own rather than needing a manual refresh.
+// Re-check group lock times periodically too, so a tab left open as a group's kickoff
+// passes disables that group's editing on its own, without needing a manual refresh.
 setInterval(async () => {
-  const wasLocked = picksLocked;
   await checkLockStatus();
-  if(picksLocked && !wasLocked){
-    renderGroups();
-    renderThird();
-  }
+  renderGroups();
+  renderThird();
 }, 5 * 60 * 1000);
 
 
