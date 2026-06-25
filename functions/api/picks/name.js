@@ -14,6 +14,11 @@ export async function onRequestGet({ env, params }) {
 }
 
 export async function onRequestPut({ env, params, request }) {
+  const lockAt = await env.PICKS_KV.get('wc26:lock-at');
+  if (lockAt && Date.now() >= new Date(lockAt).getTime()) {
+    return new Response('Picks are locked', { status: 403 });
+  }
+
   let body;
   try {
     body = await request.text(); // store as-is, it's already JSON from the client
