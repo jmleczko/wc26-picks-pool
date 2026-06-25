@@ -7,4 +7,4 @@ pages_build_output_dir = "public"
 # then paste the id it gives you below.
 [[kv_namespaces]]
 binding = "PICKS_KV"
-id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+id = "19aa848e34064a82a8d7721ece4661be"
