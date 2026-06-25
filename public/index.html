@@ -52,6 +52,9 @@
   .me-chip{display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.06); border:1px solid var(--line); padding:6px 12px; border-radius:999px; font-size:13px;}
   .me-chip b{color:var(--gold-soft);}
   .me-chip button{background:none; border:none; color:rgba(242,239,230,0.5); font-size:11px; text-decoration:underline; cursor:pointer; padding:0; font-family:'Inter',sans-serif;}
+  .rename-box{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center;}
+  .rename-box input{padding:7px 10px; border-radius:6px; border:1px solid var(--line); background:rgba(255,255,255,0.06); color:var(--chalk); font-size:13px; font-family:'Inter',sans-serif; width:160px;}
+  .rename-box .btn{width:auto; padding:7px 12px; font-size:12px;}
   .avatars{display:flex; gap:-6px;}
   .avatar{width:26px;height:26px;border-radius:50%; background:var(--grass); color:var(--ink); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; border:2px solid var(--pitch-dark); margin-left:-6px; font-family:'Space Mono',monospace;}
 
@@ -246,7 +249,12 @@
     </div>
   </div>
   <div class="who-bar">
-    <div class="me-chip">Playing as <b id="meLabel">—</b> <button id="switchName">switch</button></div>
+    <div class="me-chip">Playing as <b id="meLabel">—</b> <button id="renameBtn">rename</button> <button id="switchName">switch</button></div>
+    <div class="rename-box" id="renameBox" style="display:none;">
+      <input type="text" id="renameInput" placeholder="New name" maxlength="24" autocomplete="off">
+      <button class="btn" id="renameConfirm">Save</button>
+      <button class="btn btn-ghost" id="renameCancel">Cancel</button>
+    </div>
     <div class="avatars" id="avatarList"></div>
   </div>
 </header>
@@ -394,6 +402,16 @@ async function apiSavePicks(name, picksObj){
     method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(picksObj)
   });
 }
+async function apiDeletePicks(name){
+  try{ await fetch('/api/picks/' + encodeURIComponent(safeKey(name)), { method:'DELETE' }); }
+  catch(e){ /* best-effort cleanup, fine if this fails */ }
+}
+async function apiRenameParticipant(oldName, newName){
+  const r = await fetch('/api/participants', {
+    method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ oldName, newName })
+  });
+  return r.ok ? r.json() : [];
+}
 
 // ---------- init ----------
 async function init(){
@@ -421,6 +439,36 @@ document.getElementById('nameInput').addEventListener('keydown', (e) => {
 document.getElementById('switchName').addEventListener('click', () => {
   document.getElementById('gate').style.display = 'flex';
   document.getElementById('nameInput').value = myName || '';
+});
+
+// Rename keeps the same picks, just relabels them — different from "switch," which logs
+// in as a different (possibly existing) participant.
+document.getElementById('renameBtn').addEventListener('click', () => {
+  document.getElementById('renameInput').value = myName || '';
+  document.getElementById('renameBox').style.display = 'flex';
+  document.getElementById('renameInput').focus();
+});
+document.getElementById('renameCancel').addEventListener('click', () => {
+  document.getElementById('renameBox').style.display = 'none';
+});
+document.getElementById('renameInput').addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') document.getElementById('renameConfirm').click();
+});
+document.getElementById('renameConfirm').addEventListener('click', async () => {
+  const newName = document.getElementById('renameInput').value.trim();
+  document.getElementById('renameBox').style.display = 'none';
+  if(!newName || newName === myName) return;
+
+  const oldName = myName;
+  await apiSavePicks(newName, picks);          // copy current picks under the new name
+  await apiRenameParticipant(oldName, newName); // relabel the participant list entry
+  await apiDeletePicks(oldName);                // clean up the old key
+
+  myName = newName;
+  localStorage.setItem('wc26-myname', newName);
+  document.getElementById('meLabel').textContent = myName;
+  loadCompare();
+  loadLeaderboard();
 });
 
 async function loadEverything(){
