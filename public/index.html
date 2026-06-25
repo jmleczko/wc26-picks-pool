@@ -55,6 +55,10 @@
   .rename-box{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center;}
   .rename-box input{padding:7px 10px; border-radius:6px; border:1px solid var(--line); background:rgba(255,255,255,0.06); color:var(--chalk); font-size:13px; font-family:'Inter',sans-serif; width:160px;}
   .rename-box .btn{width:auto; padding:7px 12px; font-size:12px;}
+  .lock-banner{
+    background:rgba(122,46,46,0.25); border:1px solid var(--gold-soft); color:var(--gold-soft);
+    font-size:12.5px; padding:10px 14px; border-radius:8px; margin-bottom:18px; line-height:1.4;
+  }
   .avatars{display:flex; gap:-6px;}
   .avatar{width:26px;height:26px;border-radius:50%; background:var(--grass); color:var(--ink); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; border:2px solid var(--pitch-dark); margin-left:-6px; font-family:'Space Mono',monospace;}
 
@@ -281,6 +285,8 @@
 <main>
   <div class="panel active" id="panel-picks">
 
+    <div id="lockBanner" class="lock-banner" style="display:none;">🔒 Picks are locked — no further changes can be made. Compare and the leaderboard still update live.</div>
+
     <div class="section-title"><span class="num">1</span><h2>Group Stage</h2></div>
     <div class="section-desc">For each group, tap the 2 teams you think advance automatically. Then tap which of the other 2 you think finishes 3rd — that's the one with a shot at a wildcard spot below.</div>
     <div class="groups-grid" id="groupsGrid"></div>
@@ -349,6 +355,7 @@ const GROUP_LETTERS = Object.keys(GROUPS);
 let myName = null;
 let picks = null;
 let saveTimer = null;
+let picksLocked = false;
 
 function safeKey(name){
   return name.trim().toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,60) || 'player';
@@ -401,19 +408,24 @@ async function apiGetPicks(name){
   return r.json();
 }
 async function apiSavePicks(name, picksObj){
-  await fetch('/api/picks/' + encodeURIComponent(safeKey(name)), {
-    method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(picksObj)
-  });
+  try{
+    const r = await fetch('/api/picks/' + encodeURIComponent(safeKey(name)), {
+      method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(picksObj)
+    });
+    return r.ok;
+  }catch(e){ return false; }
 }
 async function apiDeletePicks(name){
   try{ await fetch('/api/picks/' + encodeURIComponent(safeKey(name)), { method:'DELETE' }); }
   catch(e){ /* best-effort cleanup, fine if this fails */ }
 }
 async function apiRenameParticipant(oldName, newName){
-  const r = await fetch('/api/participants', {
-    method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ oldName, newName })
-  });
-  return r.ok ? r.json() : [];
+  try{
+    const r = await fetch('/api/participants', {
+      method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ oldName, newName })
+    });
+    return r.ok ? await r.json() : null; // null is a clear "this failed" signal, unlike []
+  }catch(e){ return null; }
 }
 
 // ---------- init ----------
@@ -458,18 +470,58 @@ document.getElementById('renameInput').addEventListener('keydown', (e) => {
   if(e.key === 'Enter') document.getElementById('renameConfirm').click();
 });
 document.getElementById('renameConfirm').addEventListener('click', async () => {
-  const newName = document.getElementById('renameInput').value.trim();
-  document.getElementById('renameBox').style.display = 'none';
-  if(!newName || newName === myName) return;
+  const input = document.getElementById('renameInput');
+  const confirmBtn = document.getElementById('renameConfirm');
+  const cancelBtn = document.getElementById('renameCancel');
+  const newName = input.value.trim();
+  if(!newName || newName === myName){
+    document.getElementById('renameBox').style.display = 'none';
+    return;
+  }
+
+  // Lock the controls so a slow connection + an impatient second click can't fire two
+  // overlapping renames — that race is what caused stray duplicate names before.
+  confirmBtn.disabled = true;
+  cancelBtn.disabled = true;
+  confirmBtn.textContent = 'Saving…';
 
   const oldName = myName;
-  await apiSavePicks(newName, picks);          // copy current picks under the new name
-  await apiRenameParticipant(oldName, newName); // relabel the participant list entry
-  await apiDeletePicks(oldName);                // clean up the old key
+
+  // Step 1: copy picks to the new name. If this fails, stop here — nothing else has
+  // changed yet, so oldName and its picks are still fully intact.
+  const savedOk = await apiSavePicks(newName, picks);
+  if(!savedOk){
+    confirmBtn.disabled = false;
+    cancelBtn.disabled = false;
+    confirmBtn.textContent = 'Save';
+    alert('Could not save your picks under the new name. Nothing was changed — please try again.');
+    return;
+  }
+
+  // Step 2: relabel the shared participant list. If this fails, roll back step 1 so we
+  // don't leave an orphaned picks entry with no matching name in the list.
+  const updatedList = await apiRenameParticipant(oldName, newName);
+  if(updatedList === null){
+    await apiDeletePicks(newName); // undo step 1
+    confirmBtn.disabled = false;
+    cancelBtn.disabled = false;
+    confirmBtn.textContent = 'Save';
+    alert('Could not update the participant list. Nothing was changed — please try again.');
+    return;
+  }
+
+  // Step 3: clean up the old key. Non-critical — if this fails it just leaves a harmless
+  // stray entry behind rather than breaking anything visible, so we don't roll back for it.
+  await apiDeletePicks(oldName);
 
   myName = newName;
   localStorage.setItem('wc26-myname', newName);
   document.getElementById('meLabel').textContent = myName;
+  document.getElementById('renameBox').style.display = 'none';
+  confirmBtn.disabled = false;
+  cancelBtn.disabled = false;
+  confirmBtn.textContent = 'Save';
+  renderAvatars(updatedList);
   loadCompare();
   loadLeaderboard();
 });
@@ -483,15 +535,23 @@ async function loadEverything(){
   const remote = await apiGetPicks(myName);
   picks = normalizePicks(remote);
 
+  await checkLockStatus();
   renderGroups();
   renderThird();
   loadCompare();
 }
 
+async function checkLockStatus(){
+  const r = await fetch('/api/lock-status').then(r => r.ok ? r.json() : null).catch(() => null);
+  picksLocked = !!(r && r.locked);
+  document.getElementById('lockBanner').style.display = picksLocked ? 'block' : 'none';
+  return picksLocked;
+}
+
 function renderAvatars(participants){
   const el = document.getElementById('avatarList');
   el.innerHTML = '';
-  participants.slice(0,6).forEach(p => {
+  participants.forEach(p => {
     const d = document.createElement('div');
     d.className = 'avatar';
     d.title = p;
@@ -505,9 +565,14 @@ function queueSave(){
   const ind = document.getElementById('saveIndicator');
   ind.textContent = 'Saving…';
   saveTimer = setTimeout(async () => {
-    await apiSavePicks(myName, picks);
-    ind.textContent = 'Saved ✓';
-    setTimeout(() => { if(ind.textContent === 'Saved ✓') ind.textContent = ''; }, 1500);
+    const ok = await apiSavePicks(myName, picks);
+    if(ok){
+      ind.textContent = 'Saved ✓';
+      setTimeout(() => { if(ind.textContent === 'Saved ✓') ind.textContent = ''; }, 1500);
+    } else {
+      ind.textContent = '🔒 Picks are locked — this change was not saved';
+      checkLockStatus().then(() => { renderGroups(); renderThird(); });
+    }
   }, 500);
 }
 
@@ -627,13 +692,15 @@ function renderGroups(){
       row.innerHTML = `
         <div class="team-name">${team}</div>
         <div class="pick-pills">
-          <button class="pick-pill advancing ${isAdvancing ? 'active' : ''}" data-l="${letter}" data-team="${encodeURIComponent(team)}" data-action="top2">Advancing</button>
-          <button class="pick-pill third ${isThird ? 'active' : ''}" data-l="${letter}" data-team="${encodeURIComponent(team)}" data-action="third" ${isAdvancing ? 'disabled' : ''}>3rd</button>
+          <button class="pick-pill advancing ${isAdvancing ? 'active' : ''}" data-l="${letter}" data-team="${encodeURIComponent(team)}" data-action="top2" ${picksLocked ? 'disabled' : ''}>Advancing</button>
+          <button class="pick-pill third ${isThird ? 'active' : ''}" data-l="${letter}" data-team="${encodeURIComponent(team)}" data-action="third" ${(isAdvancing || picksLocked) ? 'disabled' : ''}>3rd</button>
         </div>`;
       card.appendChild(row);
     });
     grid.appendChild(card);
   });
+
+  if(picksLocked) return; // controls render disabled above; no need to wire up clicks
 
   grid.querySelectorAll('.pick-pill').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -679,12 +746,14 @@ function renderThird(){
     const row = document.createElement('div');
     row.className = 'third-row' + (checked ? ' checked' : '');
     row.innerHTML = `
-      <input type="checkbox" data-l="${letter}" ${checked?'checked':''}>
+      <input type="checkbox" data-l="${letter}" ${checked?'checked':''} ${picksLocked ? 'disabled' : ''}>
       <span class="grp-tag">${letter}</span>
       <span class="tname">${team || '—'}</span>`;
     list.appendChild(row);
   });
   document.getElementById('thirdCounter').textContent = `${picks.third.length} / 8 selected`;
+
+  if(picksLocked) return; // controls render disabled above; no need to wire up clicks
 
   list.querySelectorAll('input').forEach(inp => {
     inp.addEventListener('change', () => {
@@ -813,6 +882,17 @@ async function loadLeaderboard(){
 document.getElementById('lbRefreshBtn').addEventListener('click', loadLeaderboard);
 loadLeaderboard();
 setInterval(loadLeaderboard, 5 * 60 * 1000);
+
+// Re-check the lock deadline periodically too, so a tab left open before the cutoff
+// disables editing on its own rather than needing a manual refresh.
+setInterval(async () => {
+  const wasLocked = picksLocked;
+  await checkLockStatus();
+  if(picksLocked && !wasLocked){
+    renderGroups();
+    renderThird();
+  }
+}, 5 * 60 * 1000);
 
 
 init();
