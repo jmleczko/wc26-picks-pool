@@ -90,6 +90,18 @@
   table.standings th{color:rgba(242,239,230,0.45); font-weight:500;}
   table.standings td.team{text-align:left; font-weight:600;}
   table.standings tbody tr:last-child td{border-bottom:none;}
+
+  #leaderboardBox{background:var(--pitch); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin:18px 16px 0; max-width:868px; margin-left:auto; margin-right:auto;}
+  @media(min-width:1000px){#leaderboardBox{max-width:1148px;}}
+  .lb-head{display:flex; align-items:center; justify-content:space-between;}
+  .lb-head h2{font-family:'Anton',sans-serif; font-size:15px; margin:0; text-transform:uppercase; letter-spacing:0.03em;}
+  .lb-head button{width:auto; padding:5px 10px; font-size:12px;}
+  .lb-sub{font-size:11.5px; color:rgba(242,239,230,0.5); margin:4px 0 12px; line-height:1.4;}
+  .lb-row{display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:13.5px;}
+  .lb-row:last-child{border-bottom:none;}
+  .lb-rank{font-family:'Space Mono',monospace; font-weight:700; width:26px; flex:none; text-align:center; color:var(--gold-soft);}
+  .lb-name{flex:1; font-weight:600;}
+  .lb-score{font-family:'Space Mono',monospace; color:var(--gold-soft); font-weight:700;}
   .panel{display:none;}
   .panel.active{display:block;}
 
@@ -124,6 +136,17 @@
   .move-btns button{width:24px; height:24px; border-radius:4px; border:1px solid var(--line); background:rgba(255,255,255,0.04); color:var(--chalk); cursor:pointer; font-size:12px; display:flex; align-items:center; justify-content:center;}
   .move-btns button:disabled{opacity:0.25; cursor:default;}
   .move-btns button:not(:disabled):hover{border-color:var(--gold); color:var(--gold);}
+
+  .pick-pills{display:flex; gap:6px;}
+  .pick-pill{
+    font-family:'Space Mono',monospace; font-size:10.5px; font-weight:700; letter-spacing:0.02em;
+    padding:5px 9px; border-radius:999px; border:1px solid var(--line); background:rgba(255,255,255,0.04);
+    color:rgba(242,239,230,0.5); cursor:pointer; white-space:nowrap;
+  }
+  .pick-pill:disabled{opacity:0.3; cursor:not-allowed;}
+  .pick-pill.advancing.active{background:var(--grass-bright); border-color:var(--grass-bright); color:var(--ink);}
+  .pick-pill.third.active{background:var(--gold-soft); border-color:var(--gold-soft); color:var(--ink);}
+  .team-row.is-out .team-name{opacity:0.4;}
 
   .third-counter{font-family:'Space Mono',monospace; font-size:13px; color:var(--gold-soft); margin-bottom:10px;}
   .third-list{display:flex; flex-direction:column; gap:8px;}
@@ -178,7 +201,7 @@
   <div class="gate-card">
     <div class="ball">⚽</div>
     <h2 class="display">Join the pool</h2>
-    <p>Enter your name so your friends know whose picks are whose. Everyone fills in their own groups, third-place picks, and bracket — then you compare side-by-side.</p>
+    <p>Enter your name so your friends know whose picks are whose. Everyone picks their top 2 per group and best third-place teams — then you compare side-by-side. The knockout bracket opens once the real Round of 32 is set.</p>
     <input id="nameInput" type="text" placeholder="Your name" maxlength="24" autocomplete="off">
     <button class="btn" id="joinBtn">Enter the pool</button>
   </div>
@@ -219,7 +242,7 @@
     </svg>
     <div>
       <h1 class="display">World Cup <span>2026</span> Picks</h1>
-      <div class="sub">Predict every group, pick your best third-place teams, fill the bracket.</div>
+      <div class="sub">Predict each group's top 2 and the best third-place teams — bracket opens after June 27.</div>
     </div>
   </div>
   <div class="who-bar">
@@ -227,6 +250,15 @@
     <div class="avatars" id="avatarList"></div>
   </div>
 </header>
+
+<section id="leaderboardBox">
+  <div class="lb-head">
+    <h2>Leaderboard</h2>
+    <button class="btn btn-ghost" id="lbRefreshBtn">↻</button>
+  </div>
+  <div class="lb-sub">Points from group-stage top-2 picks &amp; best third-place wildcard picks, scored live against real standings as results come in. Bracket scoring arrives once the real Round of 32 is set after June 27.</div>
+  <div id="leaderboardList"><div class="live-empty">Loading…</div></div>
+</section>
 
 <div class="tabs">
   <div class="tab active" data-tab="picks">My Picks</div>
@@ -239,17 +271,17 @@
   <div class="panel active" id="panel-picks">
 
     <div class="section-title"><span class="num">1</span><h2>Group Stage</h2></div>
-    <div class="section-desc">Reorder each group into your predicted final standing — top of the list finishes 1st.</div>
+    <div class="section-desc">For each group, tap the 2 teams you think advance automatically. Then tap which of the other 2 you think finishes 3rd — that's the one with a shot at a wildcard spot below.</div>
     <div class="groups-grid" id="groupsGrid"></div>
 
     <div class="section-title"><span class="num">2</span><h2>Best Third-Place Teams</h2></div>
-    <div class="section-desc">Of the 12 teams you placed 3rd, pick the 8 you think advance to the Round of 32 (along with all 24 group winners &amp; runners-up).</div>
+    <div class="section-desc">Of the 12 teams you picked as 3rd-place finishers, choose the 8 you think rank high enough to grab one of the wildcard spots into the Round of 32.</div>
     <div class="third-counter" id="thirdCounter">0 / 8 selected</div>
     <div class="third-list" id="thirdList"></div>
 
     <div class="section-title"><span class="num">3</span><h2>Knockout Bracket</h2></div>
-    <div class="section-desc">Your 32-team field is built automatically from your picks above. Tap a team to advance them. <em>Seeding here is simplified for the app — not FIFA's official Round of 32 matchups.</em></div>
-    <div id="bracketArea"></div>
+    <div class="section-desc">This unlocks once the real Round of 32 is set. The group stage wraps June 27 — check back after that for the real bracket.</div>
+    <div class="live-empty" style="padding:10px 0 4px;">Bracket picks open after the group stage finishes.</div>
 
     <div class="save-indicator" id="saveIndicator"></div>
   </div>
@@ -312,11 +344,32 @@ function safeKey(name){
 }
 function defaultPicks(){
   const groups = {};
-  GROUP_LETTERS.forEach(l => groups[l] = [...GROUPS[l]]);
+  GROUP_LETTERS.forEach(l => {
+    const teams = GROUPS[l];
+    groups[l] = { top2: [teams[0], teams[1]], third: teams[2] };
+  });
+  return { groups, third: [] };
+}
+
+// Accepts picks in either the old (full 4-team ranked order, with a bracket) shape or the
+// current (top2 + third) shape, and always returns the current shape. Keeps older saved
+// picks (and other players' older saves) working without forcing everyone to redo them.
+function normalizePicks(raw){
+  const groups = {};
+  GROUP_LETTERS.forEach(letter => {
+    const g = raw && raw.groups && raw.groups[letter];
+    if(Array.isArray(g)){
+      groups[letter] = { top2: [g[0], g[1]].filter(Boolean), third: g[2] || null };
+    } else if(g && Array.isArray(g.top2)){
+      groups[letter] = { top2: [...g.top2], third: g.third || null };
+    } else {
+      const teams = GROUPS[letter];
+      groups[letter] = { top2: [teams[0], teams[1]], third: teams[2] };
+    }
+  });
   return {
     groups,
-    third: [],
-    bracket: { r32: Array(16).fill(null), r16: Array(8).fill(null), qf: Array(4).fill(null), sf: Array(2).fill(null), final: [null] }
+    third: Array.isArray(raw && raw.third) ? [...raw.third] : [],
   };
 }
 
@@ -377,12 +430,10 @@ async function loadEverything(){
   renderAvatars(participants);
 
   const remote = await apiGetPicks(myName);
-  picks = remote || defaultPicks();
-  if(!picks.bracket) picks.bracket = defaultPicks().bracket;
+  picks = normalizePicks(remote);
 
   renderGroups();
   renderThird();
-  renderBracket();
   loadCompare();
 }
 
@@ -512,50 +563,72 @@ function renderGroups(){
   GROUP_LETTERS.forEach(letter => {
     const card = document.createElement('div');
     card.className = 'group-card';
-    const order = picks.groups[letter];
-    card.innerHTML = `<div class="gname">GROUP ${letter} <span>${order.length} teams</span></div>`;
-    order.forEach((team, i) => {
+    const g = picks.groups[letter];
+    card.innerHTML = `<div class="gname">GROUP ${letter} <span>${g.top2.length}/2 advancing</span></div>`;
+    GROUPS[letter].forEach(team => {
+      const isAdvancing = g.top2.includes(team);
+      const isThird = !isAdvancing && g.third === team;
+      const isOut = !isAdvancing && !isThird;
       const row = document.createElement('div');
-      row.className = 'team-row';
+      row.className = 'team-row' + (isOut ? ' is-out' : '');
       row.innerHTML = `
-        <div class="rank-badge">${i+1}</div>
         <div class="team-name">${team}</div>
-        <div class="move-btns">
-          <button data-l="${letter}" data-i="${i}" data-dir="-1" ${i===0?'disabled':''}>↑</button>
-          <button data-l="${letter}" data-i="${i}" data-dir="1" ${i===order.length-1?'disabled':''}>↓</button>
+        <div class="pick-pills">
+          <button class="pick-pill advancing ${isAdvancing ? 'active' : ''}" data-l="${letter}" data-team="${encodeURIComponent(team)}" data-action="top2">Advancing</button>
+          <button class="pick-pill third ${isThird ? 'active' : ''}" data-l="${letter}" data-team="${encodeURIComponent(team)}" data-action="third" ${isAdvancing ? 'disabled' : ''}>3rd</button>
         </div>`;
       card.appendChild(row);
     });
     grid.appendChild(card);
   });
-  grid.querySelectorAll('button').forEach(btn => {
+
+  grid.querySelectorAll('.pick-pill').forEach(btn => {
     btn.addEventListener('click', () => {
-      const l = btn.dataset.l, i = parseInt(btn.dataset.i), dir = parseInt(btn.dataset.dir);
-      const arr = picks.groups[l];
-      const j = i + dir;
-      if(j < 0 || j >= arr.length) return;
-      [arr[i], arr[j]] = [arr[j], arr[i]];
+      const letter = btn.dataset.l;
+      const team = decodeURIComponent(btn.dataset.team);
+      if(btn.dataset.action === 'top2') setTop2(letter, team);
+      else setThird(letter, team);
       renderGroups();
       renderThird();
-      renderBracket();
       queueSave();
     });
   });
 }
 
-// ---------- Third place ----------
+function setTop2(letter, team){
+  const g = picks.groups[letter];
+  if(g.top2.includes(team)){
+    g.top2 = g.top2.filter(t => t !== team);
+  } else {
+    if(g.top2.length >= 2) g.top2.shift(); // bump the longest-held pick to make room
+    if(g.third === team) g.third = null;
+    g.top2.push(team);
+  }
+  if(g.third && g.top2.includes(g.third)) g.third = null;
+  if(!g.third){
+    const remaining = GROUPS[letter].filter(t => !g.top2.includes(t));
+    g.third = remaining[0] || null;
+  }
+}
+function setThird(letter, team){
+  const g = picks.groups[letter];
+  if(g.top2.includes(team)) return;
+  g.third = team;
+}
+
+// ---------- Third place wildcard ----------
 function renderThird(){
   const list = document.getElementById('thirdList');
   list.innerHTML = '';
   GROUP_LETTERS.forEach(letter => {
-    const team = picks.groups[letter][2];
+    const team = picks.groups[letter].third;
     const checked = picks.third.includes(letter);
     const row = document.createElement('div');
     row.className = 'third-row' + (checked ? ' checked' : '');
     row.innerHTML = `
       <input type="checkbox" data-l="${letter}" ${checked?'checked':''}>
       <span class="grp-tag">${letter}</span>
-      <span class="tname">${team}</span>`;
+      <span class="tname">${team || '—'}</span>`;
     list.appendChild(row);
   });
   document.getElementById('thirdCounter').textContent = `${picks.third.length} / 8 selected`;
@@ -570,7 +643,6 @@ function renderThird(){
         picks.third = picks.third.filter(x => x !== l);
       }
       renderThird();
-      renderBracket();
       queueSave();
     });
     inp.closest('.third-row').addEventListener('click', (e) => {
@@ -579,132 +651,24 @@ function renderThird(){
   });
 }
 
-// ---------- Bracket ----------
-function buildField(){
-  const winners = GROUP_LETTERS.map(l => picks.groups[l][0]);
-  const runnersUp = GROUP_LETTERS.map(l => picks.groups[l][1]);
-  const thirds = picks.third.map(l => picks.groups[l][2]);
-  const field = [...winners, ...runnersUp, ...thirds];
-  while(field.length < 32) field.push(null);
-  return field.slice(0,32);
-}
-function seededPairs(field){
-  const pairs = [];
-  for(let i=0;i<16;i++){
-    pairs.push([field[i], field[31-i]]);
-  }
-  return pairs;
-}
-function reconcileBracket(){
-  const field = buildField();
-  const pairs = seededPairs(field);
-  pairs.forEach((pair, i) => {
-    const w = picks.bracket.r32[i];
-    if(w && !pair.includes(w)) picks.bracket.r32[i] = null;
-    if(pair.includes(null)) picks.bracket.r32[i] = null;
-  });
-  for(let i=0;i<8;i++){
-    const a = picks.bracket.r32[i*2], b = picks.bracket.r32[i*2+1];
-    const w = picks.bracket.r16[i];
-    if(!a || !b){ picks.bracket.r16[i] = null; continue; }
-    if(w && w!==a && w!==b) picks.bracket.r16[i] = null;
-  }
-  for(let i=0;i<4;i++){
-    const a = picks.bracket.r16[i*2], b = picks.bracket.r16[i*2+1];
-    const w = picks.bracket.qf[i];
-    if(!a || !b){ picks.bracket.qf[i] = null; continue; }
-    if(w && w!==a && w!==b) picks.bracket.qf[i] = null;
-  }
-  for(let i=0;i<2;i++){
-    const a = picks.bracket.qf[i*2], b = picks.bracket.qf[i*2+1];
-    const w = picks.bracket.sf[i];
-    if(!a || !b){ picks.bracket.sf[i] = null; continue; }
-    if(w && w!==a && w!==b) picks.bracket.sf[i] = null;
-  }
-  {
-    const a = picks.bracket.sf[0], b = picks.bracket.sf[1];
-    const w = picks.bracket.final[0];
-    if(!a || !b){ picks.bracket.final[0] = null; }
-    else if(w && w!==a && w!==b) picks.bracket.final[0] = null;
-  }
-  return { field, pairs };
-}
-
-function matchHtml(a, b, selected, idxAttrs){
-  if(!a || !b){
-    return `<div class="match locked"><div class="placeholder-note">Waiting on earlier picks…</div></div>`;
-  }
-  return `<div class="match">
-    <div class="pick-row ${selected===a?'selected':''}" ${idxAttrs} data-pick="${encodeURIComponent(a)}"><div class="dot"></div><div class="pname">${a}</div></div>
-    <div class="pick-row ${selected===b?'selected':''}" ${idxAttrs} data-pick="${encodeURIComponent(b)}"><div class="dot"></div><div class="pname">${b}</div></div>
-  </div>`;
-}
-
-function renderBracket(){
-  const { pairs } = reconcileBracket();
-  const area = document.getElementById('bracketArea');
-  let html = '';
-
-  html += `<div class="round-block"><div class="round-label">Round of 32 <span class="tag">${picks.third.length}/8 third-place picked</span></div>`;
-  pairs.forEach((pair, i) => {
-    html += matchHtml(pair[0], pair[1], picks.bracket.r32[i], `data-round="r32" data-i="${i}"`);
-  });
-  html += `</div>`;
-
-  html += `<div class="round-block"><div class="round-label">Round of 16</div>`;
-  for(let i=0;i<8;i++){
-    const a = picks.bracket.r32[i*2], b = picks.bracket.r32[i*2+1];
-    html += matchHtml(a, b, picks.bracket.r16[i], `data-round="r16" data-i="${i}"`);
-  }
-  html += `</div>`;
-
-  html += `<div class="round-block"><div class="round-label">Quarterfinals</div>`;
-  for(let i=0;i<4;i++){
-    const a = picks.bracket.r16[i*2], b = picks.bracket.r16[i*2+1];
-    html += matchHtml(a, b, picks.bracket.qf[i], `data-round="qf" data-i="${i}"`);
-  }
-  html += `</div>`;
-
-  html += `<div class="round-block"><div class="round-label">Semifinals</div>`;
-  for(let i=0;i<2;i++){
-    const a = picks.bracket.qf[i*2], b = picks.bracket.qf[i*2+1];
-    html += matchHtml(a, b, picks.bracket.sf[i], `data-round="sf" data-i="${i}"`);
-  }
-  html += `</div>`;
-
-  html += `<div class="round-block"><div class="round-label">Final</div>`;
-  html += matchHtml(picks.bracket.sf[0], picks.bracket.sf[1], picks.bracket.final[0], `data-round="final" data-i="0"`);
-  html += `</div>`;
-
-  const champ = picks.bracket.final[0];
-  html += `<div class="champion-banner"><div class="ct">Your champion</div><div class="cn">${champ ? '🏆 ' + champ : '— pick through the bracket above —'}</div></div>`;
-
-  area.innerHTML = html;
-
-  area.querySelectorAll('.pick-row').forEach(row => {
-    row.addEventListener('click', () => {
-      const round = row.dataset.round, i = parseInt(row.dataset.i);
-      const team = decodeURIComponent(row.dataset.pick);
-      picks.bracket[round][i] = team;
-      renderBracket();
-      queueSave();
-    });
-  });
-}
-
 // ---------- Compare ----------
-async function loadCompare(){
-  const area = document.getElementById('compareArea');
-  area.innerHTML = '<div class="compare-empty">Loading…</div>';
+async function fetchAllPicks(){
   const participants = await apiGetParticipants();
-  if(participants.length === 0){
-    area.innerHTML = '<div class="compare-empty">No one has joined yet.</div>';
-    return;
-  }
   const all = [];
   for(const p of participants){
     const remote = await apiGetPicks(p);
-    if(remote) all.push({ name: p, picks: remote });
+    if(remote) all.push({ name: p, picks: normalizePicks(remote) });
+  }
+  return { participants, all };
+}
+
+async function loadCompare(){
+  const area = document.getElementById('compareArea');
+  area.innerHTML = '<div class="compare-empty">Loading…</div>';
+  const { participants, all } = await fetchAllPicks();
+  if(participants.length === 0){
+    area.innerHTML = '<div class="compare-empty">No one has joined yet.</div>';
+    return;
   }
   renderAvatars(participants);
   if(all.length === 0){
@@ -714,26 +678,7 @@ async function loadCompare(){
 
   let html = '';
 
-  html += `<div class="section-title" style="margin-top:0"><h2>Champion picks</h2></div>`;
-  html += `<div class="champ-cards">`;
-  all.forEach(p => {
-    const champ = p.picks.bracket && p.picks.bracket.final ? p.picks.bracket.final[0] : null;
-    html += `<div class="champ-card">
-      <div class="pn">${p.name}</div>
-      <div class="ct ${champ?'':'empty'}">${champ ? '🏆 ' + champ : 'No pick yet'}</div>
-    </div>`;
-  });
-  html += `</div>`;
-
-  html += `<div class="section-title"><h2>Semifinalists</h2></div>`;
-  html += `<div class="cmp-table-wrap"><table class="cmp"><thead><tr><th>Player</th><th>SF picks</th></tr></thead><tbody>`;
-  all.forEach(p => {
-    const sf = (p.picks.bracket && p.picks.bracket.qf) ? p.picks.bracket.qf.filter(Boolean) : [];
-    html += `<tr><td>${p.name}</td><td>${sf.length ? sf.join(' · ') : '—'}</td></tr>`;
-  });
-  html += `</tbody></table></div>`;
-
-  html += `<div class="section-title"><h2>Group winners &amp; runners-up</h2></div>`;
+  html += `<div class="section-title" style="margin-top:0"><h2>Predicted top 2 per group</h2></div>`;
   html += `<div class="cmp-table-wrap"><table class="cmp"><thead><tr><th>Group</th>`;
   all.forEach(p => html += `<th>${p.name}</th>`);
   html += `</tr></thead><tbody>`;
@@ -741,14 +686,81 @@ async function loadCompare(){
     html += `<tr><td class="grp">${letter}</td>`;
     all.forEach(p => {
       const g = p.picks.groups && p.picks.groups[letter];
-      html += `<td>${g ? `1. ${g[0]}<br>2. ${g[1]}` : '—'}</td>`;
+      html += `<td>${g ? g.top2.join(' &amp; ') : '—'}</td>`;
     });
     html += `</tr>`;
   });
   html += `</tbody></table></div>`;
 
+  html += `<div class="section-title"><h2>Wildcard third-place picks</h2></div>`;
+  html += `<div class="cmp-table-wrap"><table class="cmp"><thead><tr><th>Player</th><th>Picked to advance as a third-place team</th></tr></thead><tbody>`;
+  all.forEach(p => {
+    const letters = p.picks.third || [];
+    const names = letters.map(l => (p.picks.groups[l] && p.picks.groups[l].third) || l).join(' · ');
+    html += `<tr><td>${p.name}</td><td>${names || '—'}</td></tr>`;
+  });
+  html += `</tbody></table></div>`;
+
   area.innerHTML = html;
 }
+
+// ---------- Leaderboard ----------
+// Scores only what can be honestly verified against real data: group-stage placement
+// (from synced standings) and best-third-place picks. Bracket picks are intentionally
+// excluded — this app's knockout seeding is simplified, not FIFA's official Round of 32,
+// so a bracket pick can't be matched to a real fixture.
+function computeScore(picks, standings){
+  let score = 0;
+  const actualThirds = [];
+
+  GROUP_LETTERS.forEach(letter => {
+    const table = standings[letter];
+    if(!table || table.length < 3) return; // group not far enough along to have a real table yet
+    const actualTop2 = [table[0].team, table[1].team];
+    const predictedTop2 = (picks.groups && picks.groups[letter] && picks.groups[letter].top2) || [];
+    predictedTop2.forEach(t => { if(actualTop2.includes(t)) score += 1; });
+    actualThirds.push({ letter, points: table[2].points, gd: table[2].gd });
+  });
+
+  // Real "best 8 third-place teams" derived the same way FIFA ranks them: points, then goal difference
+  actualThirds.sort((a, b) => b.points - a.points || b.gd - a.gd);
+  const actualBestThirdLetters = actualThirds.slice(0, 8).map(t => t.letter);
+  (picks.third || []).forEach(l => { if(actualBestThirdLetters.includes(l)) score += 1; });
+
+  return score;
+}
+
+async function loadLeaderboard(){
+  const board = document.getElementById('leaderboardList');
+  const [{ all }, standingsRes] = await Promise.all([
+    fetchAllPicks(),
+    fetch('/api/standings').then(r => r.ok ? r.json() : null).catch(() => null),
+  ]);
+  const standings = (standingsRes && standingsRes.standings) || {};
+
+  if(all.length === 0){
+    board.innerHTML = '<div class="live-empty">No one has joined yet.</div>';
+    return;
+  }
+
+  const ranked = all
+    .map(p => ({ name: p.name, score: computeScore(p.picks, standings) }))
+    .sort((a, b) => b.score - a.score);
+
+  const medals = ['🥇', '🥈', '🥉'];
+  board.innerHTML = ranked.map((r, i) => `
+    <div class="lb-row">
+      <span class="lb-rank">${medals[i] || (i + 1)}</span>
+      <span class="lb-name">${r.name}</span>
+      <span class="lb-score">${r.score} pt${r.score === 1 ? '' : 's'}</span>
+    </div>
+  `).join('');
+}
+
+document.getElementById('lbRefreshBtn').addEventListener('click', loadLeaderboard);
+loadLeaderboard();
+setInterval(loadLeaderboard, 5 * 60 * 1000);
+
 
 init();
 </script>
