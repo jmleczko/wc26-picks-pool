@@ -1,5 +1,6 @@
-// GET /api/picks/:name  -> stored picks JSON, or 404 if none saved yet
-// PUT /api/picks/:name  -> body is the picks JSON to save
+// GET    /api/picks/:name  -> stored picks JSON, or 404 if none saved yet
+// PUT    /api/picks/:name  -> body is the picks JSON to save
+// DELETE /api/picks/:name  -> removes the stored picks for that name
 
 function keyFor(name) {
   const safe = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 60) || 'player';
@@ -13,6 +14,11 @@ export async function onRequestGet({ env, params }) {
 }
 
 export async function onRequestPut({ env, params, request }) {
+  const lockAt = await env.PICKS_KV.get('wc26:lock-at');
+  if (lockAt && Date.now() >= new Date(lockAt).getTime()) {
+    return new Response('Picks are locked', { status: 403 });
+  }
+
   let body;
   try {
     body = await request.text(); // store as-is, it's already JSON from the client
@@ -21,5 +27,10 @@ export async function onRequestPut({ env, params, request }) {
     return new Response('Invalid JSON body', { status: 400 });
   }
   await env.PICKS_KV.put(keyFor(params.name), body);
+  return Response.json({ ok: true });
+}
+
+export async function onRequestDelete({ env, params }) {
+  await env.PICKS_KV.delete(keyFor(params.name));
   return Response.json({ ok: true });
 }
