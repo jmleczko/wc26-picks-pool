@@ -32,6 +32,7 @@
   }
   .display{font-family:'Anton',sans-serif; letter-spacing:0.02em; text-transform:uppercase;}
   .mono{font-family:'Space Mono',monospace;}
+  .flag-icon{height:13px; width:auto; vertical-align:-1px; display:inline-block; margin-right:2px; border-radius:1px;}
 
   header{
     padding:22px 16px 16px;
@@ -402,7 +403,7 @@ const GROUPS = {
   E: ['Germany','Curaçao','Ivory Coast','Ecuador'],
   F: ['Netherlands','Japan','Sweden','Tunisia'],
   G: ['Belgium','Egypt','Iran','New Zealand'],
-  H: ['Spain','Cape Verde','Saudi Arabia','Uruguay'],
+  H: ['Spain','Cabo Verde','Saudi Arabia','Uruguay'],
   I: ['France','Senegal','Iraq','Norway'],
   J: ['Argentina','Algeria','Austria','Jordan'],
   K: ['Portugal','DR Congo','Uzbekistan','Colombia'],
@@ -411,10 +412,10 @@ const GROUPS = {
 const GROUP_LETTERS = Object.keys(GROUPS);
 
 // ---------- Team display: name aliases, flags, FIFA ranking ----------
-// Handles the gap between our own short names (USA, BIH) and whatever spelling the live
-// standings/fixtures API happens to use (United States, Bosnia and Herzegovina, Czechia,
-// Türkiye, Korea Republic, IR Iran, Côte d'Ivoire, Cabo Verde) — both sides get mapped to
-// one canonical name before display, comparison, or flag/rank lookup.
+// Handles the gap between our own short names (USA, BIH, Cabo Verde) and whatever spelling
+// the live standings/fixtures API happens to use (United States, Bosnia and Herzegovina,
+// Czechia, Türkiye, Korea Republic, IR Iran, Côte d'Ivoire, Cape Verde) — both sides get
+// mapped to one canonical name before display, comparison, or flag/rank lookup.
 const NAME_ALIASES = {
   'United States':'USA', 'USA':'USA',
   'Bosnia and Herzegovina':'BIH', 'BIH':'BIH',
@@ -423,40 +424,31 @@ const NAME_ALIASES = {
   "Côte d'Ivoire":'Ivory Coast', 'Ivory Coast':'Ivory Coast',
   'Korea Republic':'South Korea', 'South Korea':'South Korea',
   'IR Iran':'Iran', 'Iran':'Iran',
-  'Cabo Verde':'Cape Verde', 'Cape Verde':'Cape Verde',
+  'Cape Verde':'Cabo Verde', 'Cabo Verde':'Cabo Verde',
   'Congo DR':'DR Congo', 'DR Congo':'DR Congo',
 };
 function canon(name){ return NAME_ALIASES[name] || name; }
 
+// Real flag images via flagcdn.com rather than emoji — emoji flags depend on the viewer's
+// device/font (Windows in particular has long-standing gaps for exactly teams like these),
+// so a small hotlinked image renders identically everywhere instead.
 const TEAM_ISO = {
-  'Mexico':'MX','South Africa':'ZA','South Korea':'KR','Czech Republic':'CZ',
-  'Canada':'CA','BIH':'BA','Qatar':'QA','Switzerland':'CH',
-  'Brazil':'BR','Morocco':'MA','Haiti':'HT',
-  'USA':'US','Paraguay':'PY','Australia':'AU','Turkey':'TR',
-  'Germany':'DE','Curaçao':'CW','Ivory Coast':'CI','Ecuador':'EC',
-  'Netherlands':'NL','Japan':'JP','Sweden':'SE','Tunisia':'TN',
-  'Belgium':'BE','Egypt':'EG','Iran':'IR','New Zealand':'NZ',
-  'Spain':'ES','Cape Verde':'CV','Saudi Arabia':'SA','Uruguay':'UY',
-  'France':'FR','Senegal':'SN','Iraq':'IQ','Norway':'NO',
-  'Argentina':'AR','Algeria':'DZ','Austria':'AT','Jordan':'JO',
-  'Portugal':'PT','DR Congo':'CD','Uzbekistan':'UZ','Colombia':'CO',
-  'Croatia':'HR','Ghana':'GH','Panama':'PA',
+  'Mexico':'mx','South Africa':'za','South Korea':'kr','Czech Republic':'cz',
+  'Canada':'ca','BIH':'ba','Qatar':'qa','Switzerland':'ch',
+  'Brazil':'br','Morocco':'ma','Haiti':'ht','England':'gb-eng','Scotland':'gb-sct',
+  'USA':'us','Paraguay':'py','Australia':'au','Turkey':'tr',
+  'Germany':'de','Curaçao':'cw','Ivory Coast':'ci','Ecuador':'ec',
+  'Netherlands':'nl','Japan':'jp','Sweden':'se','Tunisia':'tn',
+  'Belgium':'be','Egypt':'eg','Iran':'ir','New Zealand':'nz',
+  'Spain':'es','Cabo Verde':'cv','Saudi Arabia':'sa','Uruguay':'uy',
+  'France':'fr','Senegal':'sn','Iraq':'iq','Norway':'no',
+  'Argentina':'ar','Algeria':'dz','Austria':'at','Jordan':'jo',
+  'Portugal':'pt','DR Congo':'cd','Uzbekistan':'uz','Colombia':'co',
+  'Croatia':'hr','Ghana':'gh','Panama':'pa',
 };
-function flagEmoji(iso2){
-  return iso2.toUpperCase().replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt(0)));
-}
-function subdivisionFlag(tag){ // England/Scotland use a tag-sequence emoji, not a plain ISO code
-  let s = '\u{1F3F4}';
-  for(const ch of tag) s += String.fromCodePoint(0xE0000 + ch.charCodeAt(0));
-  s += String.fromCodePoint(0xE0000 + 0x7F);
-  return s;
-}
-const SPECIAL_FLAGS = { 'England': subdivisionFlag('gbeng'), 'Scotland': subdivisionFlag('gbsct') };
 function flag(name){
-  const c = canon(name);
-  if(SPECIAL_FLAGS[c]) return SPECIAL_FLAGS[c];
-  const iso = TEAM_ISO[c];
-  return iso ? flagEmoji(iso) : '';
+  const code = TEAM_ISO[canon(name)];
+  return code ? `<img class="flag-icon" src="https://flagcdn.com/h40/${code}.png" alt="">` : '';
 }
 function teamLabel(name){ return `${flag(name)} ${canon(name)}`; }
 
@@ -468,7 +460,7 @@ const FIFA_RANK = {
   Australia:27, Algeria:28, Egypt:29, Canada:30, Norway:31, 'Ivory Coast':33, Panama:34,
   Sweden:38, 'Czech Republic':40, Paraguay:41, Scotland:42, Tunisia:45, 'DR Congo':46,
   Uzbekistan:50, Qatar:56, Iraq:57, 'South Africa':60, 'Saudi Arabia':61, Jordan:63, BIH:64,
-  'Cape Verde':67, Ghana:73, 'Curaçao':82, Haiti:83, 'New Zealand':85,
+  'Cabo Verde':67, Ghana:73, 'Curaçao':82, Haiti:83, 'New Zealand':85,
 };
 
 let myName = null;
