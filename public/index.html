@@ -418,13 +418,13 @@ const GROUP_LETTERS = Object.keys(GROUPS);
 // mapped to one canonical name before display, comparison, or flag/rank lookup.
 const NAME_ALIASES = {
   'United States':'USA', 'USA':'USA',
-  'Bosnia and Herzegovina':'BIH', 'BIH':'BIH',
+  'Bosnia and Herzegovina':'BIH', 'Bosnia-Herzegovina':'BIH', 'Bosnia & Herzegovina':'BIH', 'BIH':'BIH',
   'Czechia':'Czech Republic', 'Czech Republic':'Czech Republic',
   'Türkiye':'Turkey', 'Turkey':'Turkey',
   "Côte d'Ivoire":'Ivory Coast', 'Ivory Coast':'Ivory Coast',
   'Korea Republic':'South Korea', 'South Korea':'South Korea',
   'IR Iran':'Iran', 'Iran':'Iran',
-  'Cape Verde':'Cabo Verde', 'Cabo Verde':'Cabo Verde',
+  'Cape Verde':'Cabo Verde', 'Cape Verde Islands':'Cabo Verde', 'Cabo Verde Islands':'Cabo Verde', 'Cabo Verde':'Cabo Verde',
   'Congo DR':'DR Congo', 'DR Congo':'DR Congo',
 };
 function canon(name){ return NAME_ALIASES[name] || name; }
