@@ -273,8 +273,6 @@
     <div class="ball">⚽</div>
     <h2 class="display">Join the pool</h2>
     <p>Enter your name so your friends know whose picks are whose. Everyone picks their top 2 per group and best third-place teams — then you compare side-by-side. The knockout bracket opens once the real Round of 32 is set.</p>
-    <div class="avatar-picker-label">Pick an avatar <span class="optional-tag">(optional)</span></div>
-    <div class="avatar-picker" id="avatarPicker"></div>
     <input id="nameInput" type="text" placeholder="Your name" maxlength="24" autocomplete="off">
     <button class="btn" id="joinBtn">Enter the pool</button>
   </div>
@@ -319,15 +317,11 @@
     </div>
   </div>
   <div class="who-bar">
-    <div class="me-chip">Playing as <b id="meLabel">—</b> <button id="avatarBtn">avatar</button> <button id="renameBtn">rename</button> <button id="switchName">switch</button></div>
+    <div class="me-chip">Playing as <b id="meLabel">—</b> <button id="renameBtn">rename</button> <button id="switchName">switch</button></div>
     <div class="rename-box" id="renameBox" style="display:none;">
       <input type="text" id="renameInput" placeholder="New name" maxlength="24" autocomplete="off">
       <button class="btn" id="renameConfirm">Save</button>
       <button class="btn btn-ghost" id="renameCancel">Cancel</button>
-    </div>
-    <div class="avatar-picker-box" id="avatarPickerBox" style="display:none;">
-      <div class="avatar-picker" id="avatarPickerInline"></div>
-      <button class="btn btn-ghost" id="avatarPickerClose">Close</button>
     </div>
     <div class="avatars" id="avatarList"></div>
   </div>
@@ -632,37 +626,9 @@ document.getElementById('switchName').addEventListener('click', () => {
 
 // Rename keeps the same picks, just relabels them — different from "switch," which logs
 // in as a different (possibly existing) participant.
-function buildAvatarGrid(container, selectedId, onPick){
-  container.innerHTML = AVATARS.map(a => `
-    <button type="button" class="avatar-tile ${a.id === selectedId ? 'selected' : ''}" data-id="${a.id}" title="${a.label}">
-      <img src="/avatars/${a.id}.png" alt="${a.label}" loading="lazy">
-    </button>
-  `).join('');
-  container.querySelectorAll('.avatar-tile').forEach(tile => {
-    tile.addEventListener('click', () => {
-      container.querySelectorAll('.avatar-tile').forEach(t => t.classList.remove('selected'));
-      tile.classList.add('selected');
-      onPick(tile.dataset.id);
-    });
-  });
+function pickRandomAvatar(){
+  return AVATARS[Math.floor(Math.random() * AVATARS.length)].id;
 }
-buildAvatarGrid(document.getElementById('avatarPicker'), selectedAvatar, (id) => { selectedAvatar = id; });
-
-document.getElementById('avatarBtn').addEventListener('click', () => {
-  const box = document.getElementById('avatarPickerBox');
-  if(box.style.display !== 'none'){ box.style.display = 'none'; return; }
-  buildAvatarGrid(document.getElementById('avatarPickerInline'), selectedAvatar, async (id) => {
-    selectedAvatar = id;
-    const participants = await apiAddParticipant(myName, id);
-    renderAvatars(participants);
-    myAvatarUrl = avatarUrlFor(participants, myName);
-    box.style.display = 'none';
-  });
-  box.style.display = 'block';
-});
-document.getElementById('avatarPickerClose').addEventListener('click', () => {
-  document.getElementById('avatarPickerBox').style.display = 'none';
-});
 
 document.getElementById('renameBtn').addEventListener('click', () => {
   document.getElementById('renameInput').value = myName || '';
@@ -735,7 +701,9 @@ document.getElementById('renameConfirm').addEventListener('click', async () => {
 async function loadEverything(){
   document.getElementById('meLabel').textContent = myName;
 
-  const participants = await apiAddParticipant(myName, selectedAvatar);
+  // Always send a fresh random candidate — the backend only actually applies it the first
+  // time a name appears, so returning players keep whatever avatar they were first given.
+  const participants = await apiAddParticipant(myName, pickRandomAvatar());
   renderAvatars(participants);
   myAvatarUrl = avatarUrlFor(participants, myName);
   const myEntry = participants.find(p => p.name === myName);
