@@ -744,7 +744,7 @@ async function loadLiveRail(){
 
   const updatedAt = (scheduleRes && scheduleRes.updatedAt) || (standingsRes && standingsRes.updatedAt);
   document.getElementById('liveUpdated').textContent = updatedAt
-    ? 'Updated ' + new Date(updatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' · refreshes every 30 min'
+    ? 'As of ' + new Date(updatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' · refreshes every 30m'
     : 'Not synced yet — check back shortly, this refreshes every 30 minutes.';
 
   renderFixtureBuckets(scheduleRes ? scheduleRes.fixtures : []);
