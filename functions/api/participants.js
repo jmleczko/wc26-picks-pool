@@ -1,7 +1,8 @@
 // GET  /api/participants                          -> [{name, avatar}, ...]
-// POST /api/participants {name, avatar?}           -> adds name if new, or updates its
-//                                                      avatar if it already exists;
-//                                                      returns the updated list
+// POST /api/participants {name, avatar?}           -> adds name if new (with the given
+//                                                      avatar assigned once, randomly,
+//                                                      by the frontend); never overwrites
+//                                                      an avatar a participant already has
 // PUT  /api/participants {oldName, newName}        -> renames an entry (keeps its avatar),
 //                                                      returns updated list
 //
@@ -41,7 +42,7 @@ export async function onRequestPost({ env, request }) {
 
   const existing = list.find(p => safeKey(p.name) === safeKey(name));
   if (existing) {
-    if (avatar) existing.avatar = avatar; // upsert: update avatar if one was sent
+    if (avatar && !existing.avatar) existing.avatar = avatar; // fill in only if not already set
   } else {
     list.push({ name, avatar: avatar || null });
   }
