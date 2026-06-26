@@ -159,6 +159,11 @@
   .gate-card .ball{font-size:34px; margin-bottom:6px;}
   .gate-card h2{font-size:22px; margin:0 0 6px;}
   .gate-card p{font-size:13px; color:rgba(242,239,230,0.65); margin:0 0 18px; line-height:1.5;}
+  .returning-note{
+    font-size:12px; color:var(--gold-soft); background:rgba(217,165,61,0.1);
+    border:1px solid rgba(217,165,61,0.3); border-radius:8px; padding:10px 12px;
+    margin:-4px 0 16px; line-height:1.4; text-align:left;
+  }
   .gate-card input{width:100%; padding:12px 14px; border-radius:8px; border:1px solid var(--line); background:rgba(255,255,255,0.06); color:var(--chalk); font-size:15px; margin-bottom:12px; font-family:'Inter',sans-serif;}
   .gate-card input:focus{outline:2px solid var(--gold); border-color:var(--gold);}
   .btn{width:100%; padding:12px 14px; border-radius:8px; border:none; background:var(--gold); color:var(--ink); font-weight:700; font-size:14px; cursor:pointer; font-family:'Inter',sans-serif; letter-spacing:0.01em;}
@@ -251,6 +256,7 @@
     <div class="ball">⚽</div>
     <h2 class="display">Join the pool</h2>
     <p>Enter your name so your friends know whose picks are whose. Everyone picks their top 2 per group and best third-place teams — then you compare side-by-side. The knockout bracket opens once the real Round of 32 is set.</p>
+    <p class="returning-note">Already signed up before? Just type the same name again — it'll take you straight back to your picks.</p>
     <input id="nameInput" type="text" placeholder="Your name" maxlength="24" autocomplete="off">
     <button class="btn" id="joinBtn">Enter the pool</button>
   </div>
