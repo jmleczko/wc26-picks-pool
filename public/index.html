@@ -1005,35 +1005,12 @@ function isRoundLocked(round, gates){
 
 // "Winner Match 89" / "Loser Match 101" -> "89" / "101", so a later round's placeholder can
 // be traced back to the specific earlier match it depends on.
-function parseUpstreamMatchId(label){
-  if(!label) return null;
-  const m = String(label).match(/Match\s+(\d+)/i);
-  return m ? String(m[1]) : null;
-}
-
-const PREV_ROUND = { R16: 'R32', QF: 'R16', SF: 'QF', FINAL: 'SF' };
-
-// Deterministic fallback pairing (by sorted match id) for when a placeholder label isn't
-// parseable — same pairing for every player, so comparisons stay fair even if it doesn't
-// happen to mirror FIFA's exact tree in that edge case.
-function computeFallbackPairs(knockout, round){
-  const prevRound = PREV_ROUND[round];
-  if(!prevRound) return [];
-  const prevMatches = knockout.filter(f => f.round === prevRound).sort((a, b) => a.id - b.id);
-  const pairs = [];
-  for(let i = 0; i < prevMatches.length; i += 2){
-    if(prevMatches[i + 1]) pairs.push([prevMatches[i], prevMatches[i + 1]]);
-  }
-  return pairs;
-}
-
-// What does this slot actually represent right now? A confirmed real team, this player's
-// own speculative pick carried forward from an earlier round, or nothing resolvable yet.
-function resolveSlot(label, fallbackMatch){
+// What does this slot actually represent right now? Only a confirmed real team counts —
+// Round of 16 onward stays a placeholder until the actual matchup is officially known.
+function resolveSlot(label){
+  // Strictly real-confirmed-teams-only: Round of 16 onward stays a placeholder until the
+  // actual official matchup is known, regardless of what anyone picked in Round of 32.
   if(isRealTeam(label)) return { team: label, speculative: false };
-  const refId = parseUpstreamMatchId(label);
-  if(refId && picks.bracket[refId]) return { team: picks.bracket[refId], speculative: true };
-  if(fallbackMatch && picks.bracket[fallbackMatch.id]) return { team: picks.bracket[fallbackMatch.id], speculative: true };
   return { team: null, speculative: false };
 }
 
@@ -1074,29 +1051,23 @@ function renderBracket(fixtures){
   ROUND_ORDER.forEach(round => {
     const matches = knockout.filter(f => f.round === round).sort((a, b) => a.id - b.id);
     if(matches.length === 0) return;
-    const fallbackPairs = computeFallbackPairs(knockout, round);
     const locked = isRoundLocked(round, gates);
 
     html += `<div class="round-block"><div class="round-label">${ROUND_LABELS[round]}</div>`;
-    matches.forEach((m, idx) => {
-      const fallbackPair = fallbackPairs[idx];
-      const homeSlot = resolveSlot(m.home, fallbackPair ? fallbackPair[0] : null);
-      const awaySlot = resolveSlot(m.away, fallbackPair ? fallbackPair[1] : null);
+    matches.forEach(m => {
+      const homeSlot = resolveSlot(m.home);
+      const awaySlot = resolveSlot(m.away);
 
       if(!homeSlot.team || !awaySlot.team){
         const label = `${homeSlot.team || m.home || 'TBD'} vs ${awaySlot.team || m.away || 'TBD'}`;
-        html += `<div class="match locked"><div class="placeholder-note">${label} — waiting on earlier picks or results</div></div>`;
+        html += `<div class="match locked"><div class="placeholder-note">${label} — waiting on the official bracket</div></div>`;
         return;
       }
 
       const picked = picks.bracket[m.id];
-      const speculativeNote = (homeSlot.speculative || awaySlot.speculative)
-        ? '<div class="placeholder-note" style="padding:4px 12px 6px;">Based on your picks above — not a confirmed real matchup yet</div>'
-        : '';
       html += `<div class="match ${locked ? 'locked' : ''}">
         <div class="pick-row ${picked === homeSlot.team ? 'selected' : ''}" data-id="${m.id}" data-team="${encodeURIComponent(homeSlot.team)}" data-locked="${locked}"><div class="dot"></div><div class="pname">${teamLabel(homeSlot.team)}</div></div>
         <div class="pick-row ${picked === awaySlot.team ? 'selected' : ''}" data-id="${m.id}" data-team="${encodeURIComponent(awaySlot.team)}" data-locked="${locked}"><div class="dot"></div><div class="pname">${teamLabel(awaySlot.team)}</div></div>
-        ${speculativeNote}
         ${locked ? '<div class="placeholder-note" style="padding:0 12px 8px;">🔒 Locked</div>' : ''}
       </div>`;
     });
