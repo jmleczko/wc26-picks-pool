@@ -502,6 +502,11 @@ let picks = null;
 let saveTimer = null;
 let groupLockAt = {};   // letter -> kickoff timestamp (ms) of that group's first real match
 let globalLocked = false; // optional manual override, still available via wc26:lock-at
+let isLatePicker = false; // true if myName is on the wc26:late-pickers allowlist — bypasses
+                           // the bracket round-lock gates for this player only, both here
+                           // (so their buttons aren't disabled) and on the backend (enforced
+                           // independently in picks/[name].js, so this can't be spoofed by
+                           // editing localStorage or calling the API directly).
 let compareTop2Collapsed = true;  // Compare tab rebuilds its HTML on every load, so collapse
 let compareThirdCollapsed = true; // state for those two sections is tracked here instead.
 
@@ -731,12 +736,14 @@ function isGroupLocked(letter){
 }
 
 async function checkLockStatus(){
-  const [scheduleRes, globalRes] = await Promise.all([
+  const [scheduleRes, globalRes, lateRes] = await Promise.all([
     fetch('/api/schedule').then(r => r.ok ? r.json() : null).catch(() => null),
     fetch('/api/lock-status').then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch('/api/late-pickers').then(r => r.ok ? r.json() : null).catch(() => null),
   ]);
   groupLockAt = computeGroupLockTimes(scheduleRes ? scheduleRes.fixtures : []);
   globalLocked = !!(globalRes && globalRes.locked);
+  isLatePicker = Array.isArray(lateRes) && myName ? lateRes.includes(safeKey(myName)) : false;
   const anyLocked = globalLocked || GROUP_LETTERS.some(l => isGroupLocked(l));
   return anyLocked;
 }
@@ -1037,6 +1044,7 @@ function bracketLockGates(knockout){
   };
 }
 function isRoundLocked(round, gates){
+  if(isLatePicker) return false; // exempted name — backend independently allows their saves too
   const now = Date.now();
   if(round === 'R32') return gates.r32Gate != null && now >= gates.r32Gate;
   return gates.r16Gate != null && now >= gates.r16Gate; // R16, QF, SF, FINAL share one gate
