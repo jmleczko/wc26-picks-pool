@@ -3,9 +3,12 @@
 //                             group's first real match has kicked off — see below)
 // DELETE /api/picks/:name  -> removes the stored picks for that name
 
+function safeKeyName(name) {
+  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 60) || 'player';
+}
+
 function keyFor(name) {
-  const safe = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 60) || 'player';
-  return `wc26:picks:${safe}`;
+  return `wc26:picks:${safeKeyName(name)}`;
 }
 
 // Earliest kickoff per group, from whatever wc26-data-sync last wrote. A group with no
@@ -94,14 +97,28 @@ export async function onRequestPut({ env, params, request }) {
     return new Response('Invalid JSON body', { status: 400 });
   }
 
-  const [oldRaw, fixturesRaw] = await Promise.all([
+  const [oldRaw, fixturesRaw, lateRaw] = await Promise.all([
     env.PICKS_KV.get(keyFor(params.name)),
     env.PICKS_KV.get('wc26:fixtures'),
+    env.PICKS_KV.get('wc26:late-pickers'),
   ]);
   const oldPicks = oldRaw ? JSON.parse(oldRaw) : null;
   const fixtures = fixturesRaw ? JSON.parse(fixturesRaw) : [];
 
-  if (oldPicks) {
+  // Per-name exception list, managed entirely in the KV dashboard (see late-pickers.js).
+  // Someone on this list skips every lock check below, the same way a brand-new player's
+  // very first save already did — this just extends that same bypass to a name you choose,
+  // for as long as they stay on the list, instead of only on save #1.
+  let lateList = [];
+  if (lateRaw) {
+    try {
+      const parsed = JSON.parse(lateRaw);
+      if (Array.isArray(parsed)) lateList = parsed;
+    } catch { /* malformed value — fail safe to "nobody exempted" */ }
+  }
+  const isLatePicker = lateList.includes(safeKeyName(params.name));
+
+  if (oldPicks && !isLatePicker) {
     // Per-group automatic lock (group stage) — gated behind the honor-system flag above.
     if (GROUP_STAGE_LOCK_ENABLED) {
       const lockAtByGroup = computeGroupLockTimes(fixtures);
