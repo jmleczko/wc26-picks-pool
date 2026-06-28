@@ -22,6 +22,50 @@ function computeGroupLockTimes(fixtures) {
   return map;
 }
 
+// "Group A" -> ... already handled above for groups. For the bracket, classify each
+// knockout match into one of R32/R16/QF/SF/FINAL the same way the frontend does, then
+// compute the two lock gates: all of R32 locks at its earliest kickoff, and R16 through
+// the Final all share a single gate at R16's earliest kickoff (picked together in one
+// sitting once R16 is real).
+function classifyRound(stage) {
+  if (!stage) return null;
+  const s = stage.toUpperCase();
+  if (s.includes('THIRD')) return null;
+  if (s.includes('32')) return 'R32';
+  if (s.includes('16')) return 'R16';
+  if (s.includes('QUARTER')) return 'QF';
+  if (s.includes('SEMI')) return 'SF';
+  if (s.includes('FINAL')) return 'FINAL';
+  return null;
+}
+
+function bracketLockGates(fixtures) {
+  const r32Times = [];
+  const r16Times = [];
+  (fixtures || []).forEach(f => {
+    if (!f.kickoff) return;
+    const round = classifyRound(f.stage);
+    const t = new Date(f.kickoff).getTime();
+    if (Number.isNaN(t)) return;
+    if (round === 'R32') r32Times.push(t);
+    if (round === 'R16') r16Times.push(t);
+  });
+  return {
+    r32Gate: r32Times.length ? Math.min(...r32Times) : null,
+    r16Gate: r16Times.length ? Math.min(...r16Times) : null,
+  };
+}
+
+// Which gate (if any) applies to a given match id, based on that match's own round.
+function gateForMatch(matchId, fixtures, gates) {
+  const f = (fixtures || []).find(x => String(x.id) === String(matchId));
+  if (!f) return null;
+  const round = classifyRound(f.stage);
+  if (round === 'R32') return gates.r32Gate;
+  if (round === 'R16' || round === 'QF' || round === 'SF' || round === 'FINAL') return gates.r16Gate;
+  return null;
+}
+
 export async function onRequestGet({ env, params }) {
   const raw = await env.PICKS_KV.get(keyFor(params.name));
   if (!raw) return new Response('Not found', { status: 404 });
@@ -29,9 +73,8 @@ export async function onRequestGet({ env, params }) {
 }
 
 // Per-group automatic locking is OFF for the group stage — honor system for now, per request.
-// Flip this back to true once the Round of 32 bracket opens, so picks lock automatically
-// the moment each knockout match kicks off. The manual global override (wc26:lock-at)
-// below is unaffected by this flag and still works either way.
+// Flip this back to true once you want it enforced again. The bracket lock below is a
+// SEPARATE, always-on check — bracket picks lock per match at kickoff regardless of this flag.
 const GROUP_STAGE_LOCK_ENABLED = false;
 
 export async function onRequestPut({ env, params, request }) {
@@ -51,18 +94,17 @@ export async function onRequestPut({ env, params, request }) {
     return new Response('Invalid JSON body', { status: 400 });
   }
 
-  // Per-group automatic lock: reject the save only if it actually changes a group whose
-  // first real match has already kicked off — diffed against what's currently stored, so
-  // unrelated edits to still-open groups in the same payload are unaffected.
-  if (GROUP_STAGE_LOCK_ENABLED) {
-    const [oldRaw, fixturesRaw] = await Promise.all([
-      env.PICKS_KV.get(keyFor(params.name)),
-      env.PICKS_KV.get('wc26:fixtures'),
-    ]);
-    const oldPicks = oldRaw ? JSON.parse(oldRaw) : null;
+  const [oldRaw, fixturesRaw] = await Promise.all([
+    env.PICKS_KV.get(keyFor(params.name)),
+    env.PICKS_KV.get('wc26:fixtures'),
+  ]);
+  const oldPicks = oldRaw ? JSON.parse(oldRaw) : null;
+  const fixtures = fixturesRaw ? JSON.parse(fixturesRaw) : [];
 
-    if (oldPicks) {
-      const lockAtByGroup = computeGroupLockTimes(fixturesRaw ? JSON.parse(fixturesRaw) : []);
+  if (oldPicks) {
+    // Per-group automatic lock (group stage) — gated behind the honor-system flag above.
+    if (GROUP_STAGE_LOCK_ENABLED) {
+      const lockAtByGroup = computeGroupLockTimes(fixtures);
       const now = Date.now();
 
       for (const letter of Object.keys(newPicks.groups || {})) {
@@ -83,8 +125,6 @@ export async function onRequestPut({ env, params, request }) {
         }
       }
 
-      // Wildcard picks: only protect the specific letters that actually changed, and only if
-      // that letter's group has already kicked off.
       const oldThirdList = Array.isArray(oldPicks.third) ? oldPicks.third : [];
       const newThirdList = Array.isArray(newPicks.third) ? newPicks.third : [];
       const changedLetters = [...oldThirdList, ...newThirdList].filter(
@@ -97,9 +137,30 @@ export async function onRequestPut({ env, params, request }) {
         }
       }
     }
-    // If oldPicks is null (this player's very first save), there's nothing to diff against
-    // yet, so the lock check is skipped for that one initial save.
+
+    // Bracket lock — ALWAYS enforced, independent of the honor-system flag above. Round of
+    // 32 locks together at its earliest kickoff; Round of 16 through the Final share a
+    // second gate at Round of 16's earliest kickoff. Only a changed pick for an already-
+    // locked round gets rejected, so unrelated rounds in the same save still go through.
+    const gates = bracketLockGates(fixtures);
+    const oldBracket = (oldPicks.bracket && typeof oldPicks.bracket === 'object') ? oldPicks.bracket : {};
+    const newBracket = (newPicks.bracket && typeof newPicks.bracket === 'object') ? newPicks.bracket : {};
+    const now = Date.now();
+
+    const changedMatchIds = new Set([
+      ...Object.keys(oldBracket),
+      ...Object.keys(newBracket),
+    ].filter(id => oldBracket[id] !== newBracket[id]));
+
+    for (const id of changedMatchIds) {
+      const gate = gateForMatch(id, fixtures, gates);
+      if (gate != null && now >= gate) {
+        return new Response(`This round is locked — it has already started`, { status: 403 });
+      }
+    }
   }
+  // If oldPicks is null (this player's very first save), there's nothing to diff against
+  // yet, so all lock checks are skipped for that one initial save.
 
   await env.PICKS_KV.put(keyFor(params.name), newBody);
   return Response.json({ ok: true });
