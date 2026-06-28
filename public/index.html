@@ -527,6 +527,8 @@ let picks = null;
 let saveTimer = null;
 let groupLockAt = {};   // letter -> kickoff timestamp (ms) of that group's first real match
 let globalLocked = false; // optional manual override, still available via wc26:lock-at
+let compareTop2Collapsed = true;  // Compare tab rebuilds its HTML on every load, so collapse
+let compareThirdCollapsed = true; // state for those two sections is tracked here instead.
 
 function safeKey(name){
   return name.trim().toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,60) || 'player';
@@ -633,7 +635,7 @@ document.getElementById('switchName').addEventListener('click', () => {
 // Generic expand/collapse: toggles a content block's visibility and flips the link's own
 // label between Show/Hide. All three (group leaderboard, group picks, third-place picks)
 // start collapsed by default, since they're now historical/locked-in rather than active.
-function setupCollapsible(toggleId, bodyId){
+function setupCollapsible(toggleId, bodyId, onChange){
   const toggle = document.getElementById(toggleId);
   const body = document.getElementById(bodyId);
   if(!toggle || !body) return;
@@ -641,6 +643,7 @@ function setupCollapsible(toggleId, bodyId){
   toggle.addEventListener('click', () => {
     body.classList.toggle('collapsed');
     sync();
+    if(onChange) onChange(body.classList.contains('collapsed'));
   });
   sync();
 }
@@ -1197,37 +1200,11 @@ async function loadCompare(){
     html += `</div>`;
   }
 
-  html += `<div class="section-title" ${finalMatch ? '' : 'style="margin-top:0"'}><h2>Predicted top 2 per group</h2></div>`;
-  html += `<div class="cmp-table-wrap"><table class="cmp"><thead><tr><th>Group</th>`;
-  all.forEach(p => html += `<th>${p.name}</th>`);
-  html += `</tr></thead><tbody>`;
-  GROUP_LETTERS.forEach(letter => {
-    html += `<tr><td class="grp">${letter}</td>`;
-    all.forEach(p => {
-      const g = p.picks.groups && p.picks.groups[letter];
-      html += `<td>${g ? g.top2.map(teamLabel).join(' &amp; ') : '—'}</td>`;
-    });
-    html += `</tr>`;
-  });
-  html += `</tbody></table></div>`;
-
-  html += `<div class="section-title"><h2>Wildcard third-place picks</h2></div>`;
-  html += `<div class="cmp-table-wrap"><table class="cmp"><thead><tr><th>Player</th><th>Picked to advance as a third-place team</th></tr></thead><tbody>`;
-  all.forEach(p => {
-    const letters = p.picks.third || [];
-    const names = letters.map(l => {
-      const team = p.picks.groups[l] && p.picks.groups[l].third;
-      return team ? teamLabel(team) : l;
-    }).join(' · ');
-    html += `<tr><td>${p.name}</td><td>${names || '—'}</td></tr>`;
-  });
-  html += `</tbody></table></div>`;
-
   const r32Matches = (scheduleRes ? scheduleRes.fixtures : [])
     .filter(f => classifyRound(f.stage) === 'R32' && isRealTeam(f.home) && isRealTeam(f.away))
     .sort((a, b) => a.id - b.id);
   if(r32Matches.length > 0){
-    html += `<div class="section-title"><h2>Round of 32 picks</h2></div>`;
+    html += `<div class="section-title" ${finalMatch ? '' : 'style="margin-top:0"'}><h2>Round of 32 picks</h2></div>`;
     html += `<div class="cmp-table-wrap"><table class="cmp"><thead><tr><th>Match</th>`;
     all.forEach(p => html += `<th>${p.name}</th>`);
     html += `</tr></thead><tbody>`;
@@ -1242,7 +1219,47 @@ async function loadCompare(){
     html += `</tbody></table></div>`;
   }
 
+  const noHeaderYet = !finalMatch && r32Matches.length === 0;
+  html += `<div class="section-title" ${noHeaderYet ? 'style="margin-top:0"' : ''}>
+    <h2>Predicted top 2 per group</h2>
+    <button class="collapse-toggle" id="cmpTop2Toggle">Show</button>
+  </div>`;
+  html += `<div id="cmpTop2Body" class="collapsible-body ${compareTop2Collapsed ? 'collapsed' : ''}">`;
+  html += `<div class="cmp-table-wrap"><table class="cmp"><thead><tr><th>Group</th>`;
+  all.forEach(p => html += `<th>${p.name}</th>`);
+  html += `</tr></thead><tbody>`;
+  GROUP_LETTERS.forEach(letter => {
+    html += `<tr><td class="grp">${letter}</td>`;
+    all.forEach(p => {
+      const g = p.picks.groups && p.picks.groups[letter];
+      html += `<td>${g ? g.top2.map(teamLabel).join(' &amp; ') : '—'}</td>`;
+    });
+    html += `</tr>`;
+  });
+  html += `</tbody></table></div>`;
+  html += `</div>`;
+
+  html += `<div class="section-title">
+    <h2>Wildcard third-place picks</h2>
+    <button class="collapse-toggle" id="cmpThirdToggle">Show</button>
+  </div>`;
+  html += `<div id="cmpThirdBody" class="collapsible-body ${compareThirdCollapsed ? 'collapsed' : ''}">`;
+  html += `<div class="cmp-table-wrap"><table class="cmp"><thead><tr><th>Player</th><th>Picked to advance as a third-place team</th></tr></thead><tbody>`;
+  all.forEach(p => {
+    const letters = p.picks.third || [];
+    const names = letters.map(l => {
+      const team = p.picks.groups[l] && p.picks.groups[l].third;
+      return team ? teamLabel(team) : l;
+    }).join(' · ');
+    html += `<tr><td>${p.name}</td><td>${names || '—'}</td></tr>`;
+  });
+  html += `</tbody></table></div>`;
+  html += `</div>`;
+
   area.innerHTML = html;
+
+  setupCollapsible('cmpTop2Toggle', 'cmpTop2Body', v => compareTop2Collapsed = v);
+  setupCollapsible('cmpThirdToggle', 'cmpThirdBody', v => compareThirdCollapsed = v);
 }
 
 // ---------- Leaderboard ----------
