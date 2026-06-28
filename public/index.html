@@ -148,6 +148,13 @@
     font-size:16px; color:var(--chalk);
   }
   #leaderboardBox{background:var(--pitch); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin:12px 16px 0; max-width:868px; margin-left:auto; margin-right:auto;}
+  #knockoutLeaderboardBox{background:var(--pitch); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin:12px 16px 0; max-width:868px; margin-left:auto; margin-right:auto;}
+  .lb-highlighted{
+    border:1px solid var(--gold) !important;
+    background:linear-gradient(160deg, rgba(217,165,61,0.14), var(--pitch) 60%) !important;
+    box-shadow:0 0 0 1px rgba(217,165,61,0.25), 0 8px 24px rgba(217,165,61,0.12);
+  }
+  .lb-highlighted .lb-head h2{color:var(--gold-soft);}
   @media(min-width:1000px){#leaderboardBox{max-width:1148px;}}
   .lb-head{display:flex; align-items:center; justify-content:space-between;}
   .lb-head h2{font-family:'Anton',sans-serif; font-size:15px; margin:0; text-transform:uppercase; letter-spacing:0.03em;}
@@ -320,14 +327,23 @@
   </div>
 </header>
 
-<div class="congrats-banner">🎉 Congrats Damon for winning the group stage!! 🎉</div>
+<div id="congratsBanner" class="congrats-banner">🎉 Congrats Damon for winning the group stage!! 🎉</div>
+
+<section id="knockoutLeaderboardBox" class="lb-highlighted">
+  <div class="lb-head">
+    <h2>🏆 Knockout Leaderboard</h2>
+    <button class="btn btn-ghost" id="koLbRefreshBtn">↻</button>
+  </div>
+  <div class="lb-sub">1 point per correctly-picked winner, Round of 32 through the Final, scored live as real results come in.</div>
+  <div id="knockoutLeaderboardList"><div class="live-empty">Loading…</div></div>
+</section>
 
 <section id="leaderboardBox">
   <div class="lb-head">
     <h2>Leaderboard</h2>
     <button class="btn btn-ghost" id="lbRefreshBtn">↻</button>
   </div>
-  <div class="lb-sub">Points from group-stage top-2 picks &amp; best third-place wildcard picks, scored live against real standings as results come in. You can start making bracket picks once real matchups appear below, but bracket scoring itself arrives after the real Round of 32 is fully set.</div>
+  <div class="lb-sub">Points from group-stage top-2 picks &amp; best third-place wildcard picks, scored against the final group standings. This part is locked in — the group stage is over.</div>
   <div id="leaderboardList"><div class="live-empty">Loading…</div></div>
 </section>
 
@@ -341,7 +357,6 @@
 <main>
   <div class="panel active" id="panel-picks">
 
-    <div id="lockBanner" class="lock-banner">🤝 Honor system for now — please refrain from making changes once games have started. Everyone will see you are cheating. I know who you are!! Once the Round of 32 bracket opens, picks will lock automatically the moment each match kicks off — get your picks in early!</div>
 
     <div class="section-title"><span class="num">1</span><h2>Group Stage</h2></div>
     <div class="section-desc">For each group, tap the 2 teams you think advance automatically. Then tap which of the other 2 you think finishes 3rd — that's the one with a shot at a wildcard spot below.</div>
@@ -705,9 +720,6 @@ async function checkLockStatus(){
   groupLockAt = computeGroupLockTimes(scheduleRes ? scheduleRes.fixtures : []);
   globalLocked = !!(globalRes && globalRes.locked);
   const anyLocked = globalLocked || GROUP_LETTERS.some(l => isGroupLocked(l));
-  // Lock-status banner toggling is paused while locking is disabled for the group stage —
-  // the banner shown right now is the static honor-system notice instead.
-  // document.getElementById('lockBanner').style.display = anyLocked ? 'block' : 'none';
   return anyLocked;
 }
 
@@ -1171,14 +1183,32 @@ async function loadCompare(){
   });
   html += `</tbody></table></div>`;
 
+  const r32Matches = (scheduleRes ? scheduleRes.fixtures : [])
+    .filter(f => classifyRound(f.stage) === 'R32' && isRealTeam(f.home) && isRealTeam(f.away))
+    .sort((a, b) => a.id - b.id);
+  if(r32Matches.length > 0){
+    html += `<div class="section-title"><h2>Round of 32 picks</h2></div>`;
+    html += `<div class="cmp-table-wrap"><table class="cmp"><thead><tr><th>Match</th>`;
+    all.forEach(p => html += `<th>${p.name}</th>`);
+    html += `</tr></thead><tbody>`;
+    r32Matches.forEach(m => {
+      html += `<tr><td class="grp">${teamLabel(m.home)} vs ${teamLabel(m.away)}</td>`;
+      all.forEach(p => {
+        const pick = p.picks.bracket && p.picks.bracket[m.id];
+        html += `<td>${pick ? teamLabel(pick) : '—'}</td>`;
+      });
+      html += `</tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+
   area.innerHTML = html;
 }
 
 // ---------- Leaderboard ----------
 // Scores only what can be honestly verified against real data: group-stage placement
-// (from synced standings) and best-third-place picks. Bracket picks are intentionally
-// excluded — this app's knockout seeding is simplified, not FIFA's official Round of 32,
-// so a bracket pick can't be matched to a real fixture.
+// (from synced standings) and best-third-place picks. Bracket picks are shown for
+// comparison but not scored here yet — that's tracked separately as future work.
 function computeScore(picks, standings){
   let score = 0;
   const actualThirds = [];
@@ -1198,6 +1228,48 @@ function computeScore(picks, standings){
   (picks.third || []).forEach(l => { if(actualBestThirdLetters.includes(l)) score += 1; });
 
   return score;
+}
+
+// Knockout score: 1 point per match (Round of 32 through the Final) where the player's pick
+// matches the real winner. `winner` is a team NAME stored by the sync Worker — never the
+// score itself — so this scores outcomes without this code ever touching numeric goals.
+// The third-place playoff is intentionally excluded; it doesn't feed into the bracket.
+function computeKnockoutScore(picks, fixtures){
+  let score = 0;
+  (fixtures || []).forEach(f => {
+    if(!classifyRound(f.stage)) return; // skips GROUP_STAGE, THIRD_PLACE, anything unrecognized
+    if(!f.winner) return; // not decided yet
+    const pick = picks.bracket && picks.bracket[f.id];
+    if(pick && canon(pick) === canon(f.winner)) score += 1;
+  });
+  return score;
+}
+
+async function loadKnockoutLeaderboard(){
+  const board = document.getElementById('knockoutLeaderboardList');
+  const [{ all }, scheduleRes] = await Promise.all([
+    fetchAllPicks(),
+    fetch('/api/schedule').then(r => r.ok ? r.json() : null).catch(() => null),
+  ]);
+  const fixtures = (scheduleRes && scheduleRes.fixtures) || [];
+
+  if(all.length === 0){
+    board.innerHTML = '<div class="live-empty">No one has joined yet.</div>';
+    return;
+  }
+
+  const ranked = all
+    .map(p => ({ name: p.name, score: computeKnockoutScore(p.picks, fixtures) }))
+    .sort((a, b) => b.score - a.score);
+
+  const medals = ['🥇', '🥈', '🥉'];
+  board.innerHTML = ranked.map((r, i) => `
+    <div class="lb-row">
+      <span class="lb-rank">${medals[i] || (i + 1)}</span>
+      <span class="lb-name">${r.name}</span>
+      <span class="lb-score">${r.score} pt${r.score === 1 ? '' : 's'}</span>
+    </div>
+  `).join('');
 }
 
 async function loadLeaderboard(){
@@ -1230,6 +1302,10 @@ async function loadLeaderboard(){
 document.getElementById('lbRefreshBtn').addEventListener('click', loadLeaderboard);
 loadLeaderboard();
 setInterval(loadLeaderboard, 5 * 60 * 1000);
+
+document.getElementById('koLbRefreshBtn').addEventListener('click', loadKnockoutLeaderboard);
+loadKnockoutLeaderboard();
+setInterval(loadKnockoutLeaderboard, 5 * 60 * 1000);
 
 // Re-check group lock times periodically too, so a tab left open as a group's kickoff
 // passes disables that group's editing on its own, without needing a manual refresh.
@@ -1328,6 +1404,18 @@ document.getElementById('chatInput').addEventListener('keydown', (e) => {
 
 loadChat();
 setInterval(loadChat, 15 * 1000);
+
+// Temporary congrats banner — auto-removes at noon Pacific on June 28, 2026, the same
+// moment Round of 32 locks (so it disappears live for anyone with the tab open, no manual
+// cleanup or redeploy needed afterward).
+function checkCongratsBanner(){
+  const banner = document.getElementById('congratsBanner');
+  if(!banner) return; // already removed, or this build no longer has it
+  const cutoff = new Date('2026-06-28T19:00:00Z').getTime(); // noon PDT, June 28
+  if(Date.now() >= cutoff) banner.remove();
+}
+checkCongratsBanner();
+setInterval(checkCongratsBanner, 60 * 1000);
 
 init();
 </script>
