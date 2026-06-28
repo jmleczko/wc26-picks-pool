@@ -568,9 +568,9 @@ async function apiGetParticipants(){
   const r = await fetch('/api/participants');
   return r.ok ? r.json() : [];
 }
-async function apiAddParticipant(name, avatar){
+async function apiAddParticipant(name){
   const r = await fetch('/api/participants', {
-    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, avatar: avatar || null })
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name })
   });
   return r.ok ? r.json() : [];
 }
