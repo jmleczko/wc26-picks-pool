@@ -155,7 +155,7 @@
     box-shadow:0 0 0 1px rgba(217,165,61,0.25), 0 8px 24px rgba(217,165,61,0.12);
   }
   .lb-highlighted .lb-head h2{color:var(--gold-soft);}
-  @media(min-width:1000px){#leaderboardBox{max-width:1148px;}}
+  @media(min-width:1000px){#leaderboardBox, #knockoutLeaderboardBox{max-width:1148px;}}
   .lb-head{display:flex; align-items:center; justify-content:space-between;}
   .lb-head h2{font-family:'Anton',sans-serif; font-size:15px; margin:0; text-transform:uppercase; letter-spacing:0.03em;}
   .lb-head button{width:auto; padding:5px 10px; font-size:12px;}
@@ -187,6 +187,13 @@
   .btn-ghost:hover{border-color:var(--gold); color:var(--gold);}
 
   .section-title{display:flex; align-items:baseline; gap:10px; margin:30px 0 14px;}
+  .collapsible-body.collapsed{display:none;}
+  .collapse-toggle{
+    margin-left:auto; background:none; border:none; color:var(--gold-soft); font-size:12px;
+    text-decoration:underline; cursor:pointer; padding:4px 2px; font-family:'Inter',sans-serif;
+  }
+  .collapse-toggle:hover{color:var(--gold);}
+  .lb-head-actions{display:flex; align-items:center; gap:10px;}
   .section-title:first-child{margin-top:0;}
   .section-title .num{font-family:'Anton',sans-serif; font-size:13px; color:var(--ink); background:var(--gold); padding:3px 8px; border-radius:4px;}
   .section-title h2{font-size:18px; margin:0; letter-spacing:0.02em;}
@@ -341,10 +348,15 @@
 <section id="leaderboardBox">
   <div class="lb-head">
     <h2>Leaderboard</h2>
-    <button class="btn btn-ghost" id="lbRefreshBtn">↻</button>
+    <div class="lb-head-actions">
+      <button class="collapse-toggle" id="lbCollapseToggle">Show</button>
+      <button class="btn btn-ghost" id="lbRefreshBtn">↻</button>
+    </div>
   </div>
-  <div class="lb-sub">Points from group-stage top-2 picks &amp; best third-place wildcard picks, scored against the final group standings. This part is locked in — the group stage is over.</div>
-  <div id="leaderboardList"><div class="live-empty">Loading…</div></div>
+  <div id="leaderboardBody" class="collapsible-body collapsed">
+    <div class="lb-sub">Points from group-stage top-2 picks &amp; best third-place wildcard picks, scored against the final group standings. This part is locked in — the group stage is over.</div>
+    <div id="leaderboardList"><div class="live-empty">Loading…</div></div>
+  </div>
 </section>
 
 <div class="tabs">
@@ -358,19 +370,29 @@
   <div class="panel active" id="panel-picks">
 
 
-    <div class="section-title"><span class="num">1</span><h2>Group Stage</h2></div>
-    <div class="section-desc">For each group, tap the 2 teams you think advance automatically. Then tap which of the other 2 you think finishes 3rd — that's the one with a shot at a wildcard spot below.</div>
-    <div class="groups-grid" id="groupsGrid"></div>
-
-    <div class="section-title"><span class="num">2</span><h2>Best Third-Place Teams</h2></div>
-    <div class="section-desc">Of the 12 teams you picked as 3rd-place finishers, choose the 8 you think rank high enough to grab one of the wildcard spots into the Round of 32.</div>
-    <div class="third-counter" id="thirdCounter">0 / 8 selected</div>
-    <div class="third-list" id="thirdList"></div>
-
-    <div class="section-title"><span class="num">3</span><h2>Knockout Bracket</h2></div>
+    <div class="section-title"><span class="num">1</span><h2>Knockout Bracket</h2></div>
     <div class="section-desc">Round of 32 opens once real matchups land, then locks for everyone the moment the first match kicks off. Once those results are in, Round of 16 through the Final all open together in one sitting — pick your whole path to a champion — then lock together at the first Round of 16 kickoff.</div>
     <div id="bracketStatus" class="lock-banner" style="display:none;"></div>
     <div id="bracketArea"><div class="live-empty">Bracket not available yet — check back once the Round of 32 is set.</div></div>
+
+    <div class="section-title">
+      <span class="num">2</span><h2>Group Stage</h2>
+      <button class="collapse-toggle" id="groupStageToggle">Show</button>
+    </div>
+    <div id="groupStageBody" class="collapsible-body collapsed">
+      <div class="section-desc">For each group, tap the 2 teams you think advance automatically. Then tap which of the other 2 you think finishes 3rd — that's the one with a shot at a wildcard spot below.</div>
+      <div class="groups-grid" id="groupsGrid"></div>
+    </div>
+
+    <div class="section-title">
+      <span class="num">3</span><h2>Best Third-Place Teams</h2>
+      <button class="collapse-toggle" id="thirdToggle">Show</button>
+    </div>
+    <div id="thirdBody" class="collapsible-body collapsed">
+      <div class="section-desc">Of the 12 teams you picked as 3rd-place finishers, choose the 8 you think rank high enough to grab one of the wildcard spots into the Round of 32.</div>
+      <div class="third-counter" id="thirdCounter">0 / 8 selected</div>
+      <div class="third-list" id="thirdList"></div>
+    </div>
 
     <div class="save-indicator" id="saveIndicator"></div>
   </div>
@@ -608,6 +630,24 @@ document.getElementById('switchName').addEventListener('click', () => {
 
 // Rename keeps the same picks, just relabels them — different from "switch," which logs
 // in as a different (possibly existing) participant.
+// Generic expand/collapse: toggles a content block's visibility and flips the link's own
+// label between Show/Hide. All three (group leaderboard, group picks, third-place picks)
+// start collapsed by default, since they're now historical/locked-in rather than active.
+function setupCollapsible(toggleId, bodyId){
+  const toggle = document.getElementById(toggleId);
+  const body = document.getElementById(bodyId);
+  if(!toggle || !body) return;
+  const sync = () => { toggle.textContent = body.classList.contains('collapsed') ? 'Show' : 'Hide'; };
+  toggle.addEventListener('click', () => {
+    body.classList.toggle('collapsed');
+    sync();
+  });
+  sync();
+}
+setupCollapsible('groupStageToggle', 'groupStageBody');
+setupCollapsible('thirdToggle', 'thirdBody');
+setupCollapsible('lbCollapseToggle', 'leaderboardBody');
+
 document.getElementById('renameBtn').addEventListener('click', () => {
   document.getElementById('renameInput').value = myName || '';
   document.getElementById('renameBox').style.display = 'flex';
