@@ -385,7 +385,7 @@
   </div>
 
   <div class="live-section">
-    <div class="live-section-title">FIFA World Ranking (June 11)</div>
+    <div class="live-section-title">FIFA World Ranking (June 27)</div>
     <div id="rankList" class="rank-scroll"></div>
   </div>
 </aside>
@@ -466,15 +466,14 @@ function flag(name){
 }
 function teamLabel(name){ return `${flag(name)} ${canon(name)}`; }
 
-// FIFA World Ranking as of June 11, 2026 (tournament's 48 qualified teams only)
+// FIFA World Ranking as of June 27, 2026 — the 32 teams that actually advanced to the
+// Round of 32, ranked 1-32 (the original June 11 ranking covered all 48, but with 16 teams
+// now eliminated, ranking just the survivors is more relevant heading into the knockouts).
 const FIFA_RANK = {
-  Argentina:1, Spain:2, France:3, England:4, Portugal:5, Brazil:6, Morocco:7, Netherlands:8,
-  Belgium:9, Germany:10, Croatia:11, Colombia:13, Mexico:14, Senegal:15, Uruguay:16, USA:17,
-  Japan:18, Switzerland:19, Iran:20, Turkey:22, Ecuador:23, Austria:24, 'South Korea':25,
-  Australia:27, Algeria:28, Egypt:29, Canada:30, Norway:31, 'Ivory Coast':33, Panama:34,
-  Sweden:38, 'Czech Republic':40, Paraguay:41, Scotland:42, Tunisia:45, 'DR Congo':46,
-  Uzbekistan:50, Qatar:56, Iraq:57, 'South Africa':60, 'Saudi Arabia':61, Jordan:63, BIH:64,
-  'Cabo Verde':67, Ghana:73, 'Curaçao':82, Haiti:83, 'New Zealand':85,
+  France:1, Mexico:2, Netherlands:3, Brazil:4, Spain:5, Switzerland:6, England:7, Morocco:8,
+  Colombia:9, Germany:10, Argentina:11, USA:12, 'Ivory Coast':13, Norway:14, Croatia:15, Portugal:16,
+  Japan:17, Belgium:18, Egypt:19, Canada:20, 'DR Congo':21, Sweden:22, Ghana:23, Australia:24,
+  Ecuador:25, BIH:26, 'South Africa':27, Paraguay:28, Senegal:29, Iran:30, Austria:31, 'Cabo Verde':32,
 };
 
 let myName = null;
