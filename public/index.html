@@ -218,6 +218,8 @@
   .pick-row{display:flex; align-items:center; gap:10px; padding:9px 12px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.06); transition:background .12s;}
   .pick-row:last-child{border-bottom:none;}
   .pick-row:hover{background:rgba(255,255,255,0.04);}
+  .pick-row[data-locked="true"]{cursor:default;}
+  .pick-row[data-locked="true"]:hover{background:none;}
   .pick-row.selected{background:rgba(217,165,61,0.16);}
   .pick-row .dot{width:9px; height:9px; border-radius:50%; border:1px solid var(--gold); flex:none;}
   .pick-row.selected .dot{background:var(--gold);}
@@ -316,7 +318,7 @@
     <h2>Leaderboard</h2>
     <button class="btn btn-ghost" id="lbRefreshBtn">↻</button>
   </div>
-  <div class="lb-sub">Points from group-stage top-2 picks &amp; best third-place wildcard picks, scored live against real standings as results come in. Bracket scoring arrives once the real Round of 32 is set after June 27.</div>
+  <div class="lb-sub">Points from group-stage top-2 picks &amp; best third-place wildcard picks, scored live against real standings as results come in. You can start making bracket picks once real matchups appear below, but bracket scoring itself arrives after the real Round of 32 is fully set.</div>
   <div id="leaderboardList"><div class="live-empty">Loading…</div></div>
 </section>
 
@@ -330,7 +332,7 @@
 <main>
   <div class="panel active" id="panel-picks">
 
-    <div id="lockBanner" class="lock-banner">🤝 Honor system for now — please refrain from making changes once games have started. Everyone will see you are cheating. I know who you are!! Once the Round of 32 bracket opens (the evening of the 27th after group play finishes), picks will lock right before the first game on the 28th — get your picks in early!</div>
+    <div id="lockBanner" class="lock-banner">🤝 Honor system for now — please refrain from making changes once games have started. Everyone will see you are cheating. I know who you are!! Once the Round of 32 bracket opens, picks will lock automatically the moment each match kicks off — get your picks in early!</div>
 
     <div class="section-title"><span class="num">1</span><h2>Group Stage</h2></div>
     <div class="section-desc">For each group, tap the 2 teams you think advance automatically. Then tap which of the other 2 you think finishes 3rd — that's the one with a shot at a wildcard spot below.</div>
@@ -342,8 +344,9 @@
     <div class="third-list" id="thirdList"></div>
 
     <div class="section-title"><span class="num">3</span><h2>Knockout Bracket</h2></div>
-    <div class="section-desc">This unlocks once the real Round of 32 is set. The group stage wraps June 27 — check back after that for the real bracket.</div>
-    <div class="live-empty" style="padding:10px 0 4px;">Bracket picks open after the group stage finishes.</div>
+    <div class="section-desc">Round of 32 opens once real matchups land, then locks for everyone the moment the first match kicks off. Once those results are in, Round of 16 through the Final all open together in one sitting — pick your whole path to a champion — then lock together at the first Round of 16 kickoff.</div>
+    <div id="bracketStatus" class="lock-banner" style="display:none;"></div>
+    <div id="bracketArea"><div class="live-empty">Bracket not available yet — check back once the Round of 32 is set.</div></div>
 
     <div class="save-indicator" id="saveIndicator"></div>
   </div>
@@ -364,6 +367,11 @@
   <div class="live-section">
     <div class="live-section-title">Playing Now</div>
     <div id="liveNowList"><div class="live-empty">Loading…</div></div>
+  </div>
+
+  <div class="live-section">
+    <div class="live-section-title">Playing Later</div>
+    <div id="liveLaterList"><div class="live-empty">Loading…</div></div>
   </div>
 
   <div class="live-section">
@@ -484,7 +492,7 @@ function defaultPicks(){
     const teams = GROUPS[l];
     groups[l] = { top2: [teams[0], teams[1]], third: teams[2] };
   });
-  return { groups, third: [] };
+  return { groups, third: [], bracket: {} }; // bracket: { [matchId]: pickedWinnerName }
 }
 
 // Accepts picks in either the old (full 4-team ranked order, with a bracket) shape or the
@@ -506,6 +514,7 @@ function normalizePicks(raw){
   return {
     groups,
     third: Array.isArray(raw && raw.third) ? [...raw.third] : [],
+    bracket: (raw && raw.bracket && typeof raw.bracket === 'object' && !Array.isArray(raw.bracket)) ? { ...raw.bracket } : {},
   };
 }
 
@@ -656,6 +665,7 @@ async function loadEverything(){
   await checkLockStatus();
   renderGroups();
   renderThird();
+  loadBracket();
   loadCompare();
 }
 
@@ -744,7 +754,7 @@ async function loadLiveRail(){
 
   const updatedAt = (scheduleRes && scheduleRes.updatedAt) || (standingsRes && standingsRes.updatedAt);
   document.getElementById('liveUpdated').textContent = updatedAt
-    ? 'As of ' + new Date(updatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' · updates every 30m'
+    ? 'Updated ' + new Date(updatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' · refreshes every 30 min'
     : 'Not synced yet — check back shortly, this refreshes every 30 minutes.';
 
   renderFixtureBuckets(scheduleRes ? scheduleRes.fixtures : []);
@@ -753,24 +763,32 @@ async function loadLiveRail(){
 
 function renderFixtureBuckets(fixtures){
   const now = new Date();
+  const todayStr = now.toDateString();
   const tomorrow = new Date(now); tomorrow.setDate(now.getDate() + 1);
   const tomorrowStr = tomorrow.toDateString();
 
-  const live = [], tomorrowList = [];
+  const live = [], later = [], tomorrowList = [];
   (fixtures || []).forEach(f => {
     if(!f.kickoff) return;
     const k = new Date(f.kickoff);
     const end = new Date(k.getTime() + 135 * 60000); // ~2h15m match window, no scores ever stored or shown
     if(now >= k && now <= end){
       live.push(f);
+    } else if(k > now && k.toDateString() === todayStr){
+      later.push(f);
     } else if(k.toDateString() === tomorrowStr){
       tomorrowList.push(f);
     }
   });
   live.sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
+  later.sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
   tomorrowList.sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
 
-  const fmtTime = (iso) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  // Always shown in Pacific Time specifically (not the viewer's own device timezone), so
+  // everyone in the pool is reading the same clock regardless of where they actually are.
+  const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-US', {
+    hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles', timeZoneName: 'short',
+  });
 
   const nowEl = document.getElementById('liveNowList');
   nowEl.innerHTML = live.length ? live.map(f => `
@@ -780,6 +798,15 @@ function renderFixtureBuckets(fixtures){
       <span class="teams">${flag(f.home)} ${canon(f.home)} vs ${flag(f.away)} ${canon(f.away)}</span>
     </div>
   `).join('') : '<div class="live-empty">No matches in progress right now.</div>';
+
+  const laterEl = document.getElementById('liveLaterList');
+  laterEl.innerHTML = later.length ? later.map(f => `
+    <div class="fixture-row">
+      <span class="grp-tag">${f.group || ''}</span>
+      <span class="teams">${flag(f.home)} ${canon(f.home)} vs ${flag(f.away)} ${canon(f.away)}</span>
+      <span class="time">${fmtTime(f.kickoff)}</span>
+    </div>
+  `).join('') : '<div class="live-empty">No more matches later today.</div>';
 
   const tmrEl = document.getElementById('liveTomorrowList');
   tmrEl.innerHTML = tomorrowList.length ? tomorrowList.map(f => `
@@ -930,13 +957,178 @@ function renderThird(){
   });
 }
 
+// ---------- Knockout Bracket ----------
+// Each knockout match (R32 through Final) already exists as its own real fixture once
+// synced, with its own real match id — FIFA's bracket tree, not something we compute. Before
+// the real bracket is set, home/away show as whatever placeholder label the data has (e.g.
+// "Runner-up Group A", or null) — those render as plain text and aren't tappable. The moment
+// a slot has two real, recognized team names, it becomes a normal pick row automatically.
+const ROUND_ORDER = ['R32', 'R16', 'QF', 'SF', 'FINAL'];
+const ROUND_LABELS = { R32: 'Round of 32', R16: 'Round of 16', QF: 'Quarterfinals', SF: 'Semifinals', FINAL: 'Final' };
+
+function classifyRound(stage){
+  if(!stage) return null;
+  const s = stage.toUpperCase();
+  if(s.includes('THIRD')) return null; // third-place playoff isn't part of this bracket
+  if(s.includes('32')) return 'R32';
+  if(s.includes('16')) return 'R16';
+  if(s.includes('QUARTER')) return 'QF';
+  if(s.includes('SEMI')) return 'SF';
+  if(s.includes('FINAL')) return 'FINAL';
+  return null; // GROUP_STAGE and anything unrecognized
+}
+
+function isRealTeam(name){
+  return !!name && !!TEAM_ISO[canon(name)];
+}
+
+async function loadBracket(){
+  const scheduleRes = await fetch('/api/schedule').then(r => r.ok ? r.json() : null).catch(() => null);
+  renderBracket(scheduleRes ? scheduleRes.fixtures : []);
+}
+
+// Two lock gates, not per-match: all of Round of 32 locks together at its earliest kickoff,
+// then Round of 16 through the Final all lock together at the Round of 16's earliest kickoff
+// (since that whole stretch gets picked in one sitting once Round of 16 is real).
+function bracketLockGates(knockout){
+  const r32Times = knockout.filter(f => f.round === 'R32' && f.kickoff).map(f => new Date(f.kickoff).getTime());
+  const r16Times = knockout.filter(f => f.round === 'R16' && f.kickoff).map(f => new Date(f.kickoff).getTime());
+  return {
+    r32Gate: r32Times.length ? Math.min(...r32Times) : null,
+    r16Gate: r16Times.length ? Math.min(...r16Times) : null,
+  };
+}
+function isRoundLocked(round, gates){
+  const now = Date.now();
+  if(round === 'R32') return gates.r32Gate != null && now >= gates.r32Gate;
+  return gates.r16Gate != null && now >= gates.r16Gate; // R16, QF, SF, FINAL share one gate
+}
+
+// "Winner Match 89" / "Loser Match 101" -> "89" / "101", so a later round's placeholder can
+// be traced back to the specific earlier match it depends on.
+function parseUpstreamMatchId(label){
+  if(!label) return null;
+  const m = String(label).match(/Match\s+(\d+)/i);
+  return m ? String(m[1]) : null;
+}
+
+const PREV_ROUND = { R16: 'R32', QF: 'R16', SF: 'QF', FINAL: 'SF' };
+
+// Deterministic fallback pairing (by sorted match id) for when a placeholder label isn't
+// parseable — same pairing for every player, so comparisons stay fair even if it doesn't
+// happen to mirror FIFA's exact tree in that edge case.
+function computeFallbackPairs(knockout, round){
+  const prevRound = PREV_ROUND[round];
+  if(!prevRound) return [];
+  const prevMatches = knockout.filter(f => f.round === prevRound).sort((a, b) => a.id - b.id);
+  const pairs = [];
+  for(let i = 0; i < prevMatches.length; i += 2){
+    if(prevMatches[i + 1]) pairs.push([prevMatches[i], prevMatches[i + 1]]);
+  }
+  return pairs;
+}
+
+// What does this slot actually represent right now? A confirmed real team, this player's
+// own speculative pick carried forward from an earlier round, or nothing resolvable yet.
+function resolveSlot(label, fallbackMatch){
+  if(isRealTeam(label)) return { team: label, speculative: false };
+  const refId = parseUpstreamMatchId(label);
+  if(refId && picks.bracket[refId]) return { team: picks.bracket[refId], speculative: true };
+  if(fallbackMatch && picks.bracket[fallbackMatch.id]) return { team: picks.bracket[fallbackMatch.id], speculative: true };
+  return { team: null, speculative: false };
+}
+
+function renderBracket(fixtures){
+  const area = document.getElementById('bracketArea');
+  const statusEl = document.getElementById('bracketStatus');
+  const knockout = (fixtures || [])
+    .map(f => ({ ...f, round: classifyRound(f.stage) }))
+    .filter(f => f.round);
+
+  if(knockout.length === 0){
+    area.innerHTML = '<div class="live-empty">Bracket not available yet — check back once the Round of 32 is set.</div>';
+    statusEl.style.display = 'none';
+    statusEl.textContent = '';
+    return;
+  }
+  statusEl.style.display = 'block';
+
+  const gates = bracketLockGates(knockout);
+  const r32Real = knockout.filter(f => f.round === 'R32' && isRealTeam(f.home) && isRealTeam(f.away));
+  const r32Locked = isRoundLocked('R32', gates);
+  const r16Real = knockout.filter(f => f.round === 'R16' && isRealTeam(f.home) && isRealTeam(f.away));
+  const r16Locked = isRoundLocked('R16', gates);
+
+  if(r32Real.length === 0){
+    statusEl.textContent = '⏳ Waiting on the official Round of 32 matchups.';
+  } else if(!r32Locked){
+    statusEl.textContent = '✏️ Round of 32 is open — pick your winners now. All 16 picks lock together the moment the first match kicks off.';
+  } else if(r16Real.length === 0){
+    statusEl.textContent = '🔒 Round of 32 is locked in. Round of 16 opens automatically once those results are in.';
+  } else if(!r16Locked){
+    statusEl.textContent = '✏️ Round of 16 through the Final are open — pick all the way to your champion. Everything locks together at the first Round of 16 kickoff.';
+  } else {
+    statusEl.textContent = '🔒 All bracket picks are locked in. Good luck!';
+  }
+
+  let html = '';
+  ROUND_ORDER.forEach(round => {
+    const matches = knockout.filter(f => f.round === round).sort((a, b) => a.id - b.id);
+    if(matches.length === 0) return;
+    const fallbackPairs = computeFallbackPairs(knockout, round);
+    const locked = isRoundLocked(round, gates);
+
+    html += `<div class="round-block"><div class="round-label">${ROUND_LABELS[round]}</div>`;
+    matches.forEach((m, idx) => {
+      const fallbackPair = fallbackPairs[idx];
+      const homeSlot = resolveSlot(m.home, fallbackPair ? fallbackPair[0] : null);
+      const awaySlot = resolveSlot(m.away, fallbackPair ? fallbackPair[1] : null);
+
+      if(!homeSlot.team || !awaySlot.team){
+        const label = `${homeSlot.team || m.home || 'TBD'} vs ${awaySlot.team || m.away || 'TBD'}`;
+        html += `<div class="match locked"><div class="placeholder-note">${label} — waiting on earlier picks or results</div></div>`;
+        return;
+      }
+
+      const picked = picks.bracket[m.id];
+      const speculativeNote = (homeSlot.speculative || awaySlot.speculative)
+        ? '<div class="placeholder-note" style="padding:4px 12px 6px;">Based on your picks above — not a confirmed real matchup yet</div>'
+        : '';
+      html += `<div class="match ${locked ? 'locked' : ''}">
+        <div class="pick-row ${picked === homeSlot.team ? 'selected' : ''}" data-id="${m.id}" data-team="${encodeURIComponent(homeSlot.team)}" data-locked="${locked}"><div class="dot"></div><div class="pname">${teamLabel(homeSlot.team)}</div></div>
+        <div class="pick-row ${picked === awaySlot.team ? 'selected' : ''}" data-id="${m.id}" data-team="${encodeURIComponent(awaySlot.team)}" data-locked="${locked}"><div class="dot"></div><div class="pname">${teamLabel(awaySlot.team)}</div></div>
+        ${speculativeNote}
+        ${locked ? '<div class="placeholder-note" style="padding:0 12px 8px;">🔒 Locked</div>' : ''}
+      </div>`;
+    });
+    html += `</div>`;
+  });
+
+  const finalMatch = knockout.find(f => f.round === 'FINAL');
+  const champ = finalMatch ? picks.bracket[finalMatch.id] : null;
+  html += `<div class="champion-banner"><div class="ct">Your champion</div><div class="cn">${champ ? '🏆 ' + teamLabel(champ) : '— pick through the bracket above once it\'s live —'}</div></div>`;
+
+  area.innerHTML = html;
+
+  area.querySelectorAll('.pick-row').forEach(row => {
+    row.addEventListener('click', () => {
+      if(row.dataset.locked === 'true') return; // belt-and-suspenders; row is visually disabled too
+      const id = row.dataset.id;
+      const team = decodeURIComponent(row.dataset.team);
+      picks.bracket[id] = team;
+      loadBracket();
+      queueSave();
+    });
+  });
+}
+
 // ---------- Compare ----------
 async function fetchAllPicks(){
   const participants = await apiGetParticipants();
   const all = [];
   for(const p of participants){
     const remote = await apiGetPicks(p.name);
-    if(remote) all.push({ name: p.name, avatar: p.avatar, picks: normalizePicks(remote) });
+    if(remote) all.push({ name: p.name, picks: normalizePicks(remote) });
   }
   return { participants, all };
 }
@@ -944,7 +1136,10 @@ async function fetchAllPicks(){
 async function loadCompare(){
   const area = document.getElementById('compareArea');
   area.innerHTML = '<div class="compare-empty">Loading…</div>';
-  const { participants, all } = await fetchAllPicks();
+  const [{ participants, all }, scheduleRes] = await Promise.all([
+    fetchAllPicks(),
+    fetch('/api/schedule').then(r => r.ok ? r.json() : null).catch(() => null),
+  ]);
   if(participants.length === 0){
     area.innerHTML = '<div class="compare-empty">No one has joined yet.</div>';
     return;
@@ -957,7 +1152,21 @@ async function loadCompare(){
 
   let html = '';
 
-  html += `<div class="section-title" style="margin-top:0"><h2>Predicted top 2 per group</h2></div>`;
+  const finalMatch = (scheduleRes ? scheduleRes.fixtures : []).find(f => classifyRound(f.stage) === 'FINAL');
+  if(finalMatch){
+    html += `<div class="section-title" style="margin-top:0"><h2>Champion picks</h2></div>`;
+    html += `<div class="champ-cards">`;
+    all.forEach(p => {
+      const champ = p.picks.bracket && p.picks.bracket[finalMatch.id];
+      html += `<div class="champ-card">
+        <div class="pn">${p.name}</div>
+        <div class="ct ${champ ? '' : 'empty'}">${champ ? '🏆 ' + teamLabel(champ) : 'No pick yet'}</div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `<div class="section-title" ${finalMatch ? '' : 'style="margin-top:0"'}><h2>Predicted top 2 per group</h2></div>`;
   html += `<div class="cmp-table-wrap"><table class="cmp"><thead><tr><th>Group</th>`;
   all.forEach(p => html += `<th>${p.name}</th>`);
   html += `</tr></thead><tbody>`;
@@ -1049,6 +1258,7 @@ setInterval(async () => {
   await checkLockStatus();
   renderGroups();
   renderThird();
+  loadBracket(); // also self-activates the bracket the moment real matchups land
 }, 5 * 60 * 1000);
 
 // ---------- Trash Talk chat ----------
