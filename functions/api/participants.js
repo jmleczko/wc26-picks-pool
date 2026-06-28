@@ -1,14 +1,12 @@
-// GET  /api/participants                          -> [{name, avatar}, ...]
-// POST /api/participants {name, avatar?}           -> adds name if new (with the given
-//                                                      avatar assigned once, randomly,
-//                                                      by the frontend); never overwrites
-//                                                      an avatar a participant already has
-// PUT  /api/participants {oldName, newName}        -> renames an entry (keeps its avatar),
-//                                                      returns updated list
+// GET  /api/participants                    -> [{name}, ...]
+// POST /api/participants {name}             -> adds name if new, returns the updated list
+// PUT  /api/participants {oldName, newName} -> renames an entry, returns updated list
 //
-// Older entries saved before avatars existed are plain strings ("John") rather than
-// objects ({name:"John", avatar:null}) — normalize() upgrades those on read so nothing
-// from before this feature breaks.
+// No avatar field exists in this data model at all — that feature was tried and rolled
+// back. normalize() also strips an `avatar` key from any legacy entry still carrying one
+// (from plain strings, or from objects saved while the avatar feature was live), so the
+// format self-heals back to clean {name}-only objects on ordinary traffic, not just after
+// a manual KV edit.
 
 const KEY = 'wc26:participants';
 
@@ -17,7 +15,7 @@ function safeKey(name) {
 }
 
 function normalize(list) {
-  return (list || []).map(p => (typeof p === 'string' ? { name: p, avatar: null } : p));
+  return (list || []).map(p => (typeof p === 'string' ? { name: p } : { name: p.name }));
 }
 
 export async function onRequestGet({ env }) {
@@ -34,18 +32,13 @@ export async function onRequestPost({ env, request }) {
     return new Response('Invalid JSON body', { status: 400 });
   }
   const name = (body.name || '').trim();
-  const avatar = typeof body.avatar === 'string' ? body.avatar.trim() : null;
   if (!name) return new Response('Missing "name"', { status: 400 });
 
   const raw = await env.PICKS_KV.get(KEY);
   let list = normalize(raw ? JSON.parse(raw) : []);
 
-  const existing = list.find(p => safeKey(p.name) === safeKey(name));
-  if (existing) {
-    if (avatar && !existing.avatar) existing.avatar = avatar; // fill in only if not already set
-  } else {
-    list.push({ name, avatar: avatar || null });
-  }
+  const exists = list.some(p => safeKey(p.name) === safeKey(name));
+  if (!exists) list.push({ name });
 
   await env.PICKS_KV.put(KEY, JSON.stringify(list));
   return Response.json(list);
@@ -65,14 +58,11 @@ export async function onRequestPut({ env, request }) {
   const raw = await env.PICKS_KV.get(KEY);
   let list = normalize(raw ? JSON.parse(raw) : []);
 
-  const oldEntry = list.find(p => safeKey(p.name) === safeKey(oldName));
-  const carriedAvatar = oldEntry ? oldEntry.avatar : null;
-
   // Drop any entry matching either the old name or a name that already collides with the
   // new one (so renaming "John" to an existing "Jon" doesn't leave a duplicate), then add
-  // the new name back in once, carrying over whichever avatar they'd already picked.
+  // the new name back in once.
   list = list.filter(p => safeKey(p.name) !== safeKey(oldName) && safeKey(p.name) !== safeKey(newName));
-  list.push({ name: newName, avatar: carriedAvatar });
+  list.push({ name: newName });
 
   await env.PICKS_KV.put(KEY, JSON.stringify(list));
   return Response.json(list);
