@@ -362,8 +362,8 @@
     <h2>🏆 Knockout Leaderboard</h2>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="lb-toggle">
-        <button class="lb-toggle-btn active" id="koLbListBtn">List</button>
-        <button class="lb-toggle-btn" id="koLbChartBtn">Chart</button>
+        <button class="lb-toggle-btn" id="koLbListBtn">List</button>
+        <button class="lb-toggle-btn active" id="koLbChartBtn">Chart</button>
       </div>
       <button class="btn btn-ghost" id="koLbRefreshBtn">↻</button>
     </div>
@@ -1372,7 +1372,7 @@ function computeKnockoutScore(picks, fixtures){
 // Goofy soccer player — loaded as a static asset, CSS filter flips it white
 const PLAYER_IMG = `<img src="/assets/soccer-player.svg" class="lb-bar-player" alt="">`;
 
-let koLbView = 'list'; // 'list' or 'chart'
+let koLbView = 'chart'; // 'list' or 'chart'
 let koLbLastRanked = []; // cache for toggle without refetch
 
 function renderKoLbList(ranked){
