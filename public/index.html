@@ -1260,29 +1260,79 @@ async function loadCompare(){
 
   let html = '';
 
-  const finalMatch = (scheduleRes ? scheduleRes.fixtures : []).find(f => classifyRound(f.stage) === 'FINAL');
-  if(finalMatch){
-    html += `<div class="section-title" style="margin-top:0"><h2>Champion picks</h2></div>`;
-    html += `<div class="champ-cards">`;
-    all.forEach(p => {
-      const champ = p.picks.bracket && p.picks.bracket[finalMatch.id];
-      html += `<div class="champ-card">
-        <div class="pn">${p.name}</div>
-        <div class="ct ${champ ? '' : 'empty'}">${champ ? '🏆 ' + teamLabel(champ) : 'No pick yet'}</div>
-      </div>`;
-    });
-    html += `</div>`;
+  const fixtures = scheduleRes ? scheduleRes.fixtures : [];
+
+  // Determine the currently active round — the earliest round that has at least one
+  // match started (kickoff in the past) but not yet fully decided (some winner still null).
+  // Falls back to the latest round that has any real teams if all decided.
+  function activeRound(fixtures) {
+    const now = Date.now();
+    for (const round of ROUND_ORDER) {
+      const matches = fixtures.filter(f => classifyRound(f.stage) === round && isRealTeam(f.home) && isRealTeam(f.away));
+      if (matches.length === 0) continue;
+      const anyStarted = matches.some(f => f.kickoff && new Date(f.kickoff).getTime() <= now);
+      const anyUndecided = matches.some(f => !f.winner);
+      if (anyStarted && anyUndecided) return round; // in progress
+    }
+    // All started rounds are fully decided — find the latest round with real teams
+    for (const round of [...ROUND_ORDER].reverse()) {
+      const matches = fixtures.filter(f => classifyRound(f.stage) === round && isRealTeam(f.home) && isRealTeam(f.away));
+      if (matches.length > 0) return round;
+    }
+    return 'R32'; // fallback
   }
 
-  const r32Matches = (scheduleRes ? scheduleRes.fixtures : [])
-    .filter(f => classifyRound(f.stage) === 'R32' && isRealTeam(f.home) && isRealTeam(f.away))
-    .sort((a, b) => a.id - b.id);
-  if(r32Matches.length > 0){
-    html += `<div class="section-title" ${finalMatch ? '' : 'style="margin-top:0"'}><h2>Round of 32 picks</h2></div>`;
+  const currentRound = activeRound(fixtures);
+
+  // Render bracket rounds in order: Final → SF → QF → R16 → R32
+  const bracketRounds = [...ROUND_ORDER].reverse(); // FINAL first
+
+  bracketRounds.forEach(round => {
+    if (round === 'FINAL') {
+      // Champion picks — always visible, special card layout
+      const finalMatch = fixtures.find(f => classifyRound(f.stage) === 'FINAL');
+      if (!finalMatch) return;
+      const isActive = currentRound === 'FINAL';
+      const collapsed = !isActive;
+      const toggleId = `cmpBracket_FINAL_toggle`;
+      const bodyId = `cmpBracket_FINAL_body`;
+      html += `<div class="section-title" style="margin-top:0">
+        <h2>Champion picks</h2>
+        <button class="collapse-toggle" id="${toggleId}">${collapsed ? 'Show' : 'Hide'}</button>
+      </div>`;
+      html += `<div id="${bodyId}" class="collapsible-body ${collapsed ? 'collapsed' : ''}">`;
+      html += `<div class="champ-cards">`;
+      all.forEach(p => {
+        const champ = p.picks.bracket && p.picks.bracket[finalMatch.id];
+        html += `<div class="champ-card">
+          <div class="pn">${p.name}</div>
+          <div class="ct ${champ ? '' : 'empty'}">${champ ? '🏆 ' + teamLabel(champ) : 'No pick yet'}</div>
+        </div>`;
+      });
+      html += `</div></div>`;
+      return;
+    }
+
+    const roundMatches = fixtures
+      .filter(f => classifyRound(f.stage) === round && isRealTeam(f.home) && isRealTeam(f.away))
+      .sort((a, b) => a.id - b.id);
+
+    if (roundMatches.length === 0) return; // round not set yet — skip entirely
+
+    const isActive = currentRound === round;
+    const collapsed = !isActive;
+    const toggleId = `cmpBracket_${round}_toggle`;
+    const bodyId = `cmpBracket_${round}_body`;
+
+    html += `<div class="section-title">
+      <h2>${ROUND_LABELS[round]} picks</h2>
+      <button class="collapse-toggle" id="${toggleId}">${collapsed ? 'Show' : 'Hide'}</button>
+    </div>`;
+    html += `<div id="${bodyId}" class="collapsible-body ${collapsed ? 'collapsed' : ''}">`;
     html += `<div class="cmp-table-wrap"><table class="cmp"><thead><tr><th>Match</th>`;
     all.forEach(p => html += `<th>${p.name}</th>`);
     html += `</tr></thead><tbody>`;
-    r32Matches.forEach(m => {
+    roundMatches.forEach(m => {
       html += `<tr><td class="grp">${teamLabel(m.home)} vs ${teamLabel(m.away)}</td>`;
       all.forEach(p => {
         const pick = p.picks.bracket && p.picks.bracket[m.id];
@@ -1290,11 +1340,9 @@ async function loadCompare(){
       });
       html += `</tr>`;
     });
-    html += `</tbody></table></div>`;
-  }
-
-  const noHeaderYet = !finalMatch && r32Matches.length === 0;
-  html += `<div class="section-title" ${noHeaderYet ? 'style="margin-top:0"' : ''}>
+    html += `</tbody></table></div></div>`;
+  });
+  html += `<div class="section-title">
     <h2>Predicted top 2 per group</h2>
     <button class="collapse-toggle" id="cmpTop2Toggle">Show</button>
   </div>`;
@@ -1331,6 +1379,20 @@ async function loadCompare(){
   html += `</div>`;
 
   area.innerHTML = html;
+
+  // Wire up bracket round collapsibles dynamically
+  ['FINAL', ...ROUND_ORDER].forEach(round => {
+    const toggleId = `cmpBracket_${round}_toggle`;
+    const bodyId = `cmpBracket_${round}_body`;
+    const toggle = document.getElementById(toggleId);
+    const body = document.getElementById(bodyId);
+    if(toggle && body){
+      toggle.addEventListener('click', () => {
+        const collapsed = body.classList.toggle('collapsed');
+        toggle.textContent = collapsed ? 'Show' : 'Hide';
+      });
+    }
+  });
 
   setupCollapsible('cmpTop2Toggle', 'cmpTop2Body', v => compareTop2Collapsed = v);
   setupCollapsible('cmpThirdToggle', 'cmpThirdBody', v => compareThirdCollapsed = v);
