@@ -397,6 +397,13 @@
 <main>
   <div class="panel active" id="panel-picks">
 
+  <div id="guestPicksPrompt" style="display:none; text-align:center; padding:40px 20px;">
+    <div style="font-size:32px; margin-bottom:12px;">⚽</div>
+    <div style="font-family:'Anton',sans-serif; font-size:20px; letter-spacing:0.04em; text-transform:uppercase; margin-bottom:8px; color:var(--chalk);">Want to play?</div>
+    <div style="font-size:14px; color:rgba(242,239,230,0.6); margin-bottom:20px;">Join the pool to make your picks and compete on the leaderboard.</div>
+    <button class="btn" onclick="document.getElementById('gate').style.display='flex'; document.getElementById('nameInput').focus();">🎮 Join the Pool</button>
+  </div>
+
 
     <div class="section-title"><span class="num">1</span><h2>Knockout Bracket</h2></div>
     <div class="section-desc">Round of 32 opens once real matchups land, then locks for everyone the moment the first match kicks off. Once those results are in, Round of 16 through the Final all open together in one sitting — pick your whole path to a champion — then lock together at the first Round of 16 kickoff.</div>
@@ -648,13 +655,12 @@ async function init(){
     myName = stored;
     document.querySelector('.who-bar').style.display = '';
     document.querySelectorAll('.tab[data-tab="picks"]').forEach(t => t.style.display = '');
+    document.getElementById('guestPicksPrompt').style.display = 'none';
   } else {
     // No name — guest mode automatically, show join button in who-bar
     document.querySelector('.who-bar').style.display = 'none';
-    document.querySelectorAll('.tab').forEach(t => {
-      if(t.dataset.tab === 'picks') t.style.display = 'none';
-    });
     document.getElementById('guestBar').style.display = 'flex';
+    document.getElementById('guestPicksPrompt').style.display = 'block';
     // Default to compare tab for guests
     document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
     document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
@@ -681,6 +687,7 @@ document.getElementById('joinBtn').addEventListener('click', async () => {
   localStorage.setItem('wc26-myname', v);
   document.getElementById('gate').style.display = 'none';
   document.getElementById('guestBar').style.display = 'none';
+  document.getElementById('guestPicksPrompt').style.display = 'none';
   document.querySelector('.who-bar').style.display = '';
   document.querySelectorAll('.tab').forEach(t => { t.style.display = ''; });
   await loadEverything();
