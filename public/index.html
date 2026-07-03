@@ -184,6 +184,25 @@
   }
   .gate-card input{width:100%; padding:12px 14px; border-radius:8px; border:1px solid var(--line); background:rgba(255,255,255,0.06); color:var(--chalk); font-size:15px; margin-bottom:12px; font-family:'Inter',sans-serif;}
   .gate-card input:focus{outline:2px solid var(--gold); border-color:var(--gold);}
+  .gate-browse{display:block; margin-top:14px; font-size:12px; color:rgba(242,239,230,0.45); cursor:pointer; text-decoration:underline;}
+  .gate-browse:hover{color:var(--chalk);}
+
+  /* Guest join banner */
+  .guest-join-bar{background:linear-gradient(90deg,rgba(163,61,61,0.7),rgba(163,61,61,0.5)); border-bottom:1px solid var(--gold); padding:8px 16px; display:flex; align-items:center; justify-content:center; gap:12px; font-size:13px; color:var(--chalk);}
+  .guest-join-bar .btn-join{background:var(--gold); color:var(--chalk); border:none; border-radius:6px; padding:6px 16px; font-family:'Anton',sans-serif; letter-spacing:0.04em; font-size:13px; cursor:pointer; white-space:nowrap;}
+  .guest-join-bar .btn-join:hover{filter:brightness(1.15);}
+
+  /* Bar chart */
+  .lb-chart-wrap{padding:8px 0 4px;}
+  .lb-bar-row{display:flex; align-items:center; gap:8px; margin-bottom:10px; min-height:36px;}
+  .lb-bar-label{width:140px; flex:none; font-size:12.5px; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--chalk);}
+  .lb-bar-track{flex:1; background:rgba(255,255,255,0.07); border-radius:6px; height:32px; position:relative; overflow:visible;}
+  .lb-bar-fill{height:100%; border-radius:6px; background:linear-gradient(90deg,var(--red),var(--gold)); position:relative; transition:width 0.6s ease; min-width:4px;}
+  .lb-bar-player{position:absolute; right:-18px; top:50%; transform:translateY(-50%); width:36px; height:36px;}
+  .lb-bar-pts{font-size:11px; font-family:'Space Mono',monospace; color:var(--gold-soft); margin-left:24px; white-space:nowrap;}
+  .lb-toggle{display:flex; gap:6px; margin-bottom:10px;}
+  .lb-toggle-btn{padding:4px 12px; border-radius:16px; border:1px solid var(--line); background:transparent; color:rgba(242,239,230,0.5); font-size:11px; font-family:'Anton',sans-serif; letter-spacing:0.04em; cursor:pointer;}
+  .lb-toggle-btn.active{background:var(--gold); border-color:var(--gold); color:var(--chalk);}
   .btn{width:100%; padding:12px 14px; border-radius:8px; border:none; background:var(--gold); color:var(--ink); font-weight:700; font-size:14px; cursor:pointer; font-family:'Inter',sans-serif; letter-spacing:0.01em;}
   .btn:hover{background:var(--gold-soft);}
   .btn:disabled{opacity:0.4; cursor:not-allowed;}
@@ -270,6 +289,26 @@
   table.cmp td.grp{font-family:'Anton',sans-serif; color:var(--gold-soft); font-size:12px;}
   table.cmp tbody tr:last-child td{border-bottom:none;}
 
+  /* ---------- Schedule tab ---------- */
+  .sched-controls{display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:14px 0 10px;}
+  .sched-search{flex:1; min-width:180px; background:rgba(255,255,255,0.07); border:1px solid var(--line); border-radius:8px; padding:8px 12px; color:var(--chalk); font-size:14px; font-family:'Inter',sans-serif; outline:none;}
+  .sched-search::placeholder{color:rgba(242,239,230,0.35);}
+  .sched-search:focus{border-color:rgba(242,239,230,0.3);}
+  .sched-pills{display:flex; gap:6px; flex-wrap:wrap;}
+  .sched-pill{padding:6px 13px; border-radius:20px; border:1px solid var(--line); background:transparent; color:rgba(242,239,230,0.55); font-size:12px; font-family:'Anton',sans-serif; letter-spacing:0.04em; cursor:pointer; transition:all .15s; white-space:nowrap;}
+  .sched-pill.active{background:var(--gold); border-color:var(--gold); color:var(--chalk);}
+  .sched-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; padding-bottom:24px;}
+  .sched-card{background:var(--panel-bg); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border:1px solid var(--line); border-radius:10px; padding:12px 14px;}
+  .sched-card-meta{font-size:10.5px; color:var(--gold-soft); font-family:'Anton',sans-serif; letter-spacing:0.05em; text-transform:uppercase; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;}
+  .sched-card-teams{display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:13.5px; font-weight:600;}
+  .sched-card-team{display:flex; align-items:center; gap:6px; flex:1;}
+  .sched-card-team.away{justify-content:flex-end; text-align:right;}
+  .sched-card-vs{font-size:11px; color:rgba(242,239,230,0.35); font-family:'Space Mono',monospace; flex:none;}
+  .sched-card-winner{font-size:10px; color:var(--gold-soft); margin-top:7px; font-family:'Space Mono',monospace; letter-spacing:0.03em;}
+  .sched-card.decided{border-color:rgba(163,61,61,0.35);}
+  .sched-empty{text-align:center; padding:40px 0; color:rgba(242,239,230,0.35); font-size:14px;}
+  @media(max-width:500px){.sched-grid{grid-template-columns:1fr 1fr;}}
+
   .refresh-row{display:flex; justify-content:flex-end; margin-bottom:14px;}
   .refresh-row button{font-size:12px; padding:7px 12px; width:auto;}
   .save-indicator{font-family:'Space Mono',monospace; font-size:11px; color:rgba(242,239,230,0.4); text-align:center; margin-top:14px; height:14px;}
@@ -287,7 +326,13 @@
     <p class="returning-note">Already signed up before? Just type the same name again — it'll take you straight back to your picks.</p>
     <input id="nameInput" type="text" placeholder="Your name" maxlength="24" autocomplete="off">
     <button class="btn" id="joinBtn">Enter the pool</button>
+    <a class="gate-browse" id="browseBtn">Just browsing — show me the leaderboard →</a>
   </div>
+</div>
+
+<div id="guestBar" class="guest-join-bar" style="display:none;">
+  👀 You're viewing as a guest &nbsp;—&nbsp;
+  <button class="btn-join" id="guestJoinBtn">🎮 Join the Pool</button>
 </div>
 
 <header>
@@ -315,7 +360,13 @@
 <section id="knockoutLeaderboardBox" class="lb-highlighted">
   <div class="lb-head">
     <h2>🏆 Knockout Leaderboard</h2>
-    <button class="btn btn-ghost" id="koLbRefreshBtn">↻</button>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="lb-toggle">
+        <button class="lb-toggle-btn active" id="koLbListBtn">List</button>
+        <button class="lb-toggle-btn" id="koLbChartBtn">Chart</button>
+      </div>
+      <button class="btn btn-ghost" id="koLbRefreshBtn">↻</button>
+    </div>
   </div>
   <div class="lb-sub">1 point per correctly-picked winner, Round of 32 through the Final, scored live as real results come in.</div>
   <div id="knockoutLeaderboardList"><div class="live-empty">Loading…</div></div>
@@ -338,6 +389,7 @@
 <div class="tabs">
   <div class="tab active" data-tab="picks">My Picks</div>
   <div class="tab" data-tab="compare">Compare</div>
+  <div class="tab" data-tab="schedule">Schedule</div>
   <div class="tab" data-tab="live">Live</div>
 </div>
 
@@ -376,6 +428,10 @@
   <div class="panel" id="panel-compare">
     <div class="refresh-row"><button class="btn btn-ghost" id="refreshBtn">↻ Refresh picks</button></div>
     <div id="compareArea"><div class="compare-empty">Loading…</div></div>
+  </div>
+
+  <div class="panel" id="panel-schedule">
+    <div id="scheduleArea"></div>
   </div>
 </main>
 
@@ -595,6 +651,31 @@ async function init(){
   }
 }
 
+// Guest mode — skip name entry, load in read-only view
+document.getElementById('browseBtn').addEventListener('click', async () => {
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('guestBar').style.display = 'flex';
+  // Hide the My Picks tab and who-bar since there's no player identity
+  document.querySelectorAll('.tab').forEach(t => {
+    if(t.dataset.tab === 'picks') t.style.display = 'none';
+  });
+  document.querySelector('.who-bar').style.display = 'none';
+  // Switch to leaderboard/compare view
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+  const compareTab = document.querySelector('.tab[data-tab="compare"]');
+  if(compareTab){ compareTab.classList.add('active'); document.getElementById('panel-compare').classList.add('active'); }
+  await checkLockStatus();
+  await Promise.all([loadLeaderboard(), loadKnockoutLeaderboard(), loadLiveRail(), loadCompare()]);
+});
+
+document.getElementById('guestJoinBtn').addEventListener('click', () => {
+  document.getElementById('guestBar').style.display = 'none';
+  document.getElementById('gate').style.display = 'flex';
+  document.querySelectorAll('.tab').forEach(t => { t.style.display = ''; });
+  document.querySelector('.who-bar').style.display = '';
+});
+
 document.getElementById('joinBtn').addEventListener('click', async () => {
   const v = document.getElementById('nameInput').value.trim();
   if(!v) return;
@@ -786,6 +867,7 @@ document.querySelectorAll('.tab').forEach(t => {
     document.getElementById('panel-' + t.dataset.tab).classList.add('active');
     if(t.dataset.tab === 'compare') loadCompare();
     if(t.dataset.tab === 'live') loadLiveRail();
+    if(t.dataset.tab === 'schedule') loadSchedule();
   });
 });
 document.getElementById('refreshBtn').addEventListener('click', loadCompare);
@@ -1286,6 +1368,61 @@ function computeKnockoutScore(picks, fixtures){
   return score;
 }
 
+// Goofy soccer player SVG silhouette — dribbling forward, slightly chaotic
+const PLAYER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" fill="none">
+  <!-- head -->
+  <circle cx="18" cy="5" r="3.5" fill="#F2EFE6"/>
+  <!-- body leaning forward -->
+  <line x1="18" y1="8.5" x2="15" y2="17" stroke="#F2EFE6" stroke-width="2.2" stroke-linecap="round"/>
+  <!-- arms flailing -->
+  <line x1="16" y1="11" x2="9" y2="9" stroke="#F2EFE6" stroke-width="2" stroke-linecap="round"/>
+  <line x1="16" y1="11" x2="22" y2="7" stroke="#F2EFE6" stroke-width="2" stroke-linecap="round"/>
+  <!-- legs -->
+  <line x1="15" y1="17" x2="11" y2="25" stroke="#F2EFE6" stroke-width="2.2" stroke-linecap="round"/>
+  <line x1="15" y1="17" x2="20" y2="24" stroke="#F2EFE6" stroke-width="2.2" stroke-linecap="round"/>
+  <!-- feet -->
+  <line x1="11" y1="25" x2="8" y2="27" stroke="#F2EFE6" stroke-width="2" stroke-linecap="round"/>
+  <line x1="20" y1="24" x2="24" y2="26" stroke="#F2EFE6" stroke-width="2" stroke-linecap="round"/>
+  <!-- ball being kicked -->
+  <circle cx="26" cy="29" r="3.5" fill="none" stroke="#A33D3D" stroke-width="1.8"/>
+  <line x1="26" y1="25.5" x2="26" y2="29" stroke="#A33D3D" stroke-width="1.2"/>
+  <line x1="22.5" y1="29" x2="29.5" y2="29" stroke="#A33D3D" stroke-width="1.2"/>
+</svg>`;
+
+let koLbView = 'list'; // 'list' or 'chart'
+let koLbLastRanked = []; // cache for toggle without refetch
+
+function renderKoLbList(ranked){
+  const medals = ['🥇','🥈','🥉'];
+  return ranked.map((r,i) => `
+    <div class="lb-row">
+      <span class="lb-rank">${medals[i]||(i+1)}</span>
+      <span class="lb-name">${r.name}</span>
+      <span class="lb-score">${r.score} pt${r.score===1?'':'s'}</span>
+    </div>
+  `).join('');
+}
+
+function renderKoLbChart(ranked){
+  if(ranked.length === 0) return '<div class="live-empty">No scores yet.</div>';
+  const max = Math.max(...ranked.map(r => r.score), 1);
+  const rows = ranked.map((r, i) => {
+    const pct = Math.round((r.score / max) * 100);
+    const medals = ['🥇','🥈','🥉'];
+    const rank = medals[i] || (i+1);
+    return `<div class="lb-bar-row">
+      <div class="lb-bar-label" title="${r.name}">${rank} ${r.name}</div>
+      <div class="lb-bar-track">
+        <div class="lb-bar-fill" style="width:${pct}%">
+          <div class="lb-bar-player">${PLAYER_SVG}</div>
+        </div>
+      </div>
+      <div class="lb-bar-pts">${r.score} pt${r.score===1?'':'s'}</div>
+    </div>`;
+  }).join('');
+  return `<div class="lb-chart-wrap">${rows}</div>`;
+}
+
 async function loadKnockoutLeaderboard(){
   const board = document.getElementById('knockoutLeaderboardList');
   const [{ all }, scheduleRes] = await Promise.all([
@@ -1299,19 +1436,28 @@ async function loadKnockoutLeaderboard(){
     return;
   }
 
-  const ranked = all
+  koLbLastRanked = all
     .map(p => ({ name: p.name, score: computeKnockoutScore(p.picks, fixtures) }))
     .sort((a, b) => b.score - a.score);
 
-  const medals = ['🥇', '🥈', '🥉'];
-  board.innerHTML = ranked.map((r, i) => `
-    <div class="lb-row">
-      <span class="lb-rank">${medals[i] || (i + 1)}</span>
-      <span class="lb-name">${r.name}</span>
-      <span class="lb-score">${r.score} pt${r.score === 1 ? '' : 's'}</span>
-    </div>
-  `).join('');
+  board.innerHTML = koLbView === 'chart'
+    ? renderKoLbChart(koLbLastRanked)
+    : renderKoLbList(koLbLastRanked);
 }
+
+document.getElementById('koLbListBtn').addEventListener('click', () => {
+  koLbView = 'list';
+  document.getElementById('koLbListBtn').classList.add('active');
+  document.getElementById('koLbChartBtn').classList.remove('active');
+  if(koLbLastRanked.length) document.getElementById('knockoutLeaderboardList').innerHTML = renderKoLbList(koLbLastRanked);
+});
+
+document.getElementById('koLbChartBtn').addEventListener('click', () => {
+  koLbView = 'chart';
+  document.getElementById('koLbChartBtn').classList.add('active');
+  document.getElementById('koLbListBtn').classList.remove('active');
+  if(koLbLastRanked.length) document.getElementById('knockoutLeaderboardList').innerHTML = renderKoLbChart(koLbLastRanked);
+});
 
 async function loadLeaderboard(){
   const board = document.getElementById('leaderboardList');
@@ -1343,6 +1489,151 @@ async function loadLeaderboard(){
 document.getElementById('lbRefreshBtn').addEventListener('click', loadLeaderboard);
 loadLeaderboard();
 setInterval(loadLeaderboard, 5 * 60 * 1000);
+
+// ---------- Schedule tab ----------
+const SCHED_ROUNDS = [
+  { label: 'All',           key: 'all' },
+  { label: 'Group Stage',   key: 'GROUP_STAGE' },
+  { label: 'Round of 32',   key: 'LAST_32' },
+  { label: 'Round of 16',   key: 'LAST_16' },
+  { label: 'Quarterfinals', key: 'QUARTER_FINALS' },
+  { label: 'Semis / Final', key: 'SF_FINAL' },
+];
+
+let schedFixtures = null;
+let schedFilter = 'all';
+let schedSearch = '';
+
+function stageToKey(stage){
+  if(!stage) return '';
+  const s = stage.toUpperCase();
+  if(s.includes('GROUP')) return 'GROUP_STAGE';
+  if(s.includes('32') || s.includes('LAST_32')) return 'LAST_32';
+  if(s.includes('16') || s.includes('LAST_16')) return 'LAST_16';
+  if(s.includes('QUARTER')) return 'QUARTER_FINALS';
+  if(s.includes('SEMI') || s.includes('FINAL')) return 'SF_FINAL';
+  return '';
+}
+
+function stageLabel(stage){
+  if(!stage) return '';
+  const s = stage.toUpperCase();
+  if(s.includes('GROUP')) return 'Group Stage';
+  if(s.includes('32') || s.includes('LAST_32')) return 'Round of 32';
+  if(s.includes('16') || s.includes('LAST_16')) return 'Round of 16';
+  if(s.includes('QUARTER')) return 'Quarterfinals';
+  if(s.includes('SEMI')) return 'Semifinal';
+  if(s.includes('FINAL')) return 'Final';
+  if(s.includes('THIRD')) return 'Third Place';
+  return stage;
+}
+
+function formatKickoff(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleString('en-US', {
+    month:'short', day:'numeric', hour:'numeric', minute:'2-digit',
+    timeZoneName:'short', timeZone:'America/Los_Angeles'
+  });
+}
+
+function renderScheduleGrid(){
+  const area = document.getElementById('scheduleArea');
+  if(!schedFixtures){ area.innerHTML = '<div class="sched-empty">Loading…</div>'; return; }
+
+  const q = schedSearch.trim().toLowerCase();
+  const filtered = schedFixtures.filter(f => {
+    if(f.stage && f.stage.toUpperCase().includes('THIRD')) return false; // exclude 3rd place playoff
+    const roundMatch = schedFilter === 'all' || stageToKey(f.stage) === schedFilter;
+    if(!roundMatch) return false;
+    if(!q) return true;
+    const home = canon(f.home || '').toLowerCase();
+    const away = canon(f.away || '').toLowerCase();
+    const grp = (f.group || '').toLowerCase();
+    return home.includes(q) || away.includes(q) || grp.includes(q) || stageLabel(f.stage).toLowerCase().includes(q);
+  });
+
+  const cards = filtered.map(f => {
+    const home = f.home ? canon(f.home) : null;
+    const away = f.away ? canon(f.away) : null;
+    const decided = !!f.winner;
+    const winnerName = f.winner ? canon(f.winner) : null;
+    const groupLabel = f.group ? `Group ${f.group} · ` : '';
+    const metaLeft = `${groupLabel}${stageLabel(f.stage)}`;
+    const metaRight = formatKickoff(f.kickoff);
+
+    const homeTeam = home
+      ? `${flag(home)}<span>${home}</span>`
+      : `<span style="color:rgba(242,239,230,0.3)">TBD</span>`;
+    const awayTeam = away
+      ? `<span>${away}</span>${flag(away)}`
+      : `<span style="color:rgba(242,239,230,0.3)">TBD</span>`;
+
+    const winnerRow = decided
+      ? `<div class="sched-card-winner">✓ ${winnerName} advanced</div>`
+      : '';
+
+    return `<div class="sched-card${decided ? ' decided' : ''}">
+      <div class="sched-card-meta"><span>${metaLeft}</span><span>${metaRight}</span></div>
+      <div class="sched-card-teams">
+        <div class="sched-card-team">${homeTeam}</div>
+        <div class="sched-card-vs">vs</div>
+        <div class="sched-card-team away">${awayTeam}</div>
+      </div>
+      ${winnerRow}
+    </div>`;
+  }).join('');
+
+  const empty = filtered.length === 0
+    ? '<div class="sched-empty">No matches found.</div>'
+    : `<div class="sched-grid">${cards}</div>`;
+
+  area.querySelector('#schedGrid').innerHTML = empty;
+}
+
+async function loadSchedule(){
+  const area = document.getElementById('scheduleArea');
+
+  // Build chrome once
+  if(!area.querySelector('.sched-controls')){
+    const pillsHtml = SCHED_ROUNDS.map(r =>
+      `<button class="sched-pill${r.key === 'all' ? ' active' : ''}" data-round="${r.key}">${r.label}</button>`
+    ).join('');
+    area.innerHTML = `
+      <div class="sched-controls">
+        <input class="sched-search" type="text" placeholder="Search team or group…" id="schedSearch">
+        <div class="sched-pills">${pillsHtml}</div>
+      </div>
+      <div id="schedGrid"><div class="sched-empty">Loading…</div></div>
+    `;
+
+    document.getElementById('schedSearch').addEventListener('input', e => {
+      schedSearch = e.target.value;
+      renderScheduleGrid();
+    });
+
+    area.querySelectorAll('.sched-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        area.querySelectorAll('.sched-pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        schedFilter = pill.dataset.round;
+        renderScheduleGrid();
+      });
+    });
+  }
+
+  if(!schedFixtures){
+    try {
+      const res = await fetch('/api/schedule');
+      if(res.ok){
+        const data = await res.json();
+        schedFixtures = (data.fixtures || []).sort((a,b) => new Date(a.kickoff) - new Date(b.kickoff));
+      }
+    } catch { /* leave null, renderScheduleGrid shows error */ }
+  }
+
+  renderScheduleGrid();
+}
 
 document.getElementById('koLbRefreshBtn').addEventListener('click', loadKnockoutLeaderboard);
 loadKnockoutLeaderboard();
