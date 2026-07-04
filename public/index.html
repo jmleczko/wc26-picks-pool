@@ -1141,14 +1141,53 @@ function isRoundLocked(round, gates){
   return gates.r16Gate != null && now >= gates.r16Gate; // R16, QF, SF, FINAL share one gate
 }
 
-// "Winner Match 89" / "Loser Match 101" -> "89" / "101", so a later round's placeholder can
-// be traced back to the specific earlier match it depends on.
-// What does this slot actually represent right now? Only a confirmed real team counts —
-// Round of 16 onward stays a placeholder until the actual matchup is officially known.
-function resolveSlot(label){
-  // Strictly real-confirmed-teams-only: Round of 16 onward stays a placeholder until the
-  // actual official matchup is known, regardless of what anyone picked in Round of 32.
+// Bracket tree — maps each QF/SF/Final fixture ID to the two R16/QF/SF fixture IDs
+// whose winners feed into it. Derived from the FIFA official bracket image + fixture IDs
+// confirmed from football-data.org data. This is hardcoded because the API never populates
+// QF/SF/Final home/away until the actual teams are officially confirmed post-match.
+const BRACKET_TREE = {
+  // QF: winner of R16 match A vs winner of R16 match B
+  537383: [537375, 537376], // W(PAR/FRA) vs W(CAN/MAR) — Jul 9
+  537384: [537377, 537378], // W(BRA/NOR) vs W(MEX/ENG) — Jul 10
+  537385: [537379, 537380], // W(POR/ESP) vs W(USA/BEL) — Jul 11
+  537386: [537381, 537382], // W(ARG/EGY) vs W(SUI/COL) — Jul 12
+  // SF: winner of QF match A vs winner of QF match B
+  537387: [537383, 537384], // W(QF1) vs W(QF2) — Jul 14
+  537388: [537385, 537386], // W(QF3) vs W(QF4) — Jul 15
+  // Final
+  537390: [537387, 537388], // W(SF1) vs W(SF2) — Jul 19
+};
+
+// Resolve what team occupies a slot for a given match side.
+// For R16 and below: only real confirmed team names count.
+// For QF/SF/Final: if the official name is null, trace back through the bracket tree
+// using the user's own picks to speculatively populate the slot.
+function resolveSlot(label, matchId, side, fixturesById){
+  // If it's already a real confirmed team, use it
   if(isRealTeam(label)) return { team: label, speculative: false };
+
+  // Try to resolve speculatively via bracket tree
+  const feeders = BRACKET_TREE[matchId];
+  if(!feeders) return { team: null, speculative: false };
+
+  // side 0 = home feeder, side 1 = away feeder
+  const feederMatchId = feeders[side];
+  const feederMatch = fixturesById[feederMatchId];
+
+  if(!feederMatch) return { team: null, speculative: false };
+
+  // If the feeder match has a real winner (result is in), use that
+  if(feederMatch.winner && isRealTeam(feederMatch.winner)){
+    return { team: feederMatch.winner, speculative: false };
+  }
+
+  // Otherwise check what the user picked for the feeder match
+  const userPick = picks.bracket[feederMatchId];
+  if(userPick && isRealTeam(userPick)){
+    return { team: userPick, speculative: true };
+  }
+
+  // User hasn't picked the feeder match yet
   return { team: null, speculative: false };
 }
 
@@ -1167,6 +1206,10 @@ function renderBracket(fixtures){
   }
   statusEl.style.display = 'block';
 
+  // Build a lookup map by fixture ID for resolveSlot to trace the bracket tree
+  const fixturesById = {};
+  knockout.forEach(f => { fixturesById[f.id] = f; });
+
   const gates = bracketLockGates(knockout);
   const r32Real = knockout.filter(f => f.round === 'R32' && isRealTeam(f.home) && isRealTeam(f.away));
   const r32Locked = isRoundLocked('R32', gates);
@@ -1180,7 +1223,7 @@ function renderBracket(fixtures){
   } else if(r16Real.length === 0){
     statusEl.textContent = '🔒 Round of 32 is locked in. Round of 16 opens automatically once those results are in.';
   } else if(!r16Locked){
-    statusEl.textContent = '✏️ Round of 16 through the Final are open — pick all the way to your champion. Everything locks together at the first Round of 16 kickoff.';
+    statusEl.textContent = '✏️ Round of 16 is open — pick all the way to your champion. Your QF/SF/Final picks update automatically as you pick earlier rounds. Everything locks together at the first Round of 16 kickoff.';
   } else {
     statusEl.textContent = '🔒 All bracket picks are locked in. Good luck!';
   }
@@ -1193,19 +1236,37 @@ function renderBracket(fixtures){
 
     html += `<div class="round-block"><div class="round-label">${ROUND_LABELS[round]}</div>`;
     matches.forEach(m => {
-      const homeSlot = resolveSlot(m.home);
-      const awaySlot = resolveSlot(m.away);
+      const homeSlot = resolveSlot(m.home, m.id, 0, fixturesById);
+      const awaySlot = resolveSlot(m.away, m.id, 1, fixturesById);
 
-      if(!homeSlot.team || !awaySlot.team){
-        const label = `${homeSlot.team || m.home || 'TBD'} vs ${awaySlot.team || m.away || 'TBD'}`;
-        html += `<div class="match locked"><div class="placeholder-note">${label} — waiting on the official bracket</div></div>`;
+      // Neither side has a team yet (real or speculative)
+      if(!homeSlot.team && !awaySlot.team){
+        html += `<div class="match locked"><div class="placeholder-note">TBD vs TBD — waiting on earlier results</div></div>`;
         return;
       }
 
+      // At least one side is known — render as a pickable match
+      // A speculative match is only pickable if BOTH sides are resolved (real or speculative)
+      const bothResolved = homeSlot.team && awaySlot.team;
+      const isSpeculative = homeSlot.speculative || awaySlot.speculative;
+      const pickable = bothResolved && !locked;
+
       const picked = picks.bracket[m.id];
+
+      const homeLabel = homeSlot.team ? teamLabel(homeSlot.team) : 'TBD';
+      const awayLabel = awaySlot.team ? teamLabel(awaySlot.team) : 'TBD';
+      const speculativeNote = isSpeculative ? '<div class="placeholder-note" style="padding:0 12px 4px;font-size:10px;opacity:0.55;">✦ Based on your picks</div>' : '';
+
       html += `<div class="match ${locked ? 'locked' : ''}">
-        <div class="pick-row ${picked === homeSlot.team ? 'selected' : ''}" data-id="${m.id}" data-team="${encodeURIComponent(homeSlot.team)}" data-locked="${locked}"><div class="dot"></div><div class="pname">${teamLabel(homeSlot.team)}</div></div>
-        <div class="pick-row ${picked === awaySlot.team ? 'selected' : ''}" data-id="${m.id}" data-team="${encodeURIComponent(awaySlot.team)}" data-locked="${locked}"><div class="dot"></div><div class="pname">${teamLabel(awaySlot.team)}</div></div>
+        ${speculativeNote}
+        <div class="pick-row ${picked === homeSlot.team ? 'selected' : ''}" data-id="${m.id}" data-team="${homeSlot.team ? encodeURIComponent(homeSlot.team) : ''}" data-locked="${!pickable || !homeSlot.team}">
+          <div class="dot"></div>
+          <div class="pname">${homeLabel}${homeSlot.speculative ? ' <span style="opacity:0.45;font-size:10px">(your pick)</span>' : ''}</div>
+        </div>
+        <div class="pick-row ${picked === awaySlot.team ? 'selected' : ''}" data-id="${m.id}" data-team="${awaySlot.team ? encodeURIComponent(awaySlot.team) : ''}" data-locked="${!pickable || !awaySlot.team}">
+          <div class="dot"></div>
+          <div class="pname">${awayLabel}${awaySlot.speculative ? ' <span style="opacity:0.45;font-size:10px">(your pick)</span>' : ''}</div>
+        </div>
         ${locked ? '<div class="placeholder-note" style="padding:0 12px 8px;">🔒 Locked</div>' : ''}
       </div>`;
     });
@@ -1214,17 +1275,18 @@ function renderBracket(fixtures){
 
   const finalMatch = knockout.find(f => f.round === 'FINAL');
   const champ = finalMatch ? picks.bracket[finalMatch.id] : null;
-  html += `<div class="champion-banner"><div class="ct">Your champion</div><div class="cn">${champ ? '🏆 ' + teamLabel(champ) : '— pick through the bracket above once it\'s live —'}</div></div>`;
+  html += `<div class="champion-banner"><div class="ct">Your champion</div><div class="cn">${champ ? '🏆 ' + teamLabel(champ) : '— pick through the bracket above —'}</div></div>`;
 
   area.innerHTML = html;
 
   area.querySelectorAll('.pick-row').forEach(row => {
     row.addEventListener('click', () => {
-      if(row.dataset.locked === 'true') return; // belt-and-suspenders; row is visually disabled too
+      if(row.dataset.locked === 'true') return;
       const id = row.dataset.id;
       const team = decodeURIComponent(row.dataset.team);
+      if(!team) return;
       picks.bracket[id] = team;
-      loadBracket();
+      renderBracket(fixtures); // re-render in place so downstream speculative picks update
       queueSave();
     });
   });
