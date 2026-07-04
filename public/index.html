@@ -1223,7 +1223,7 @@ function renderBracket(fixtures){
   } else if(r16Real.length === 0){
     statusEl.textContent = '🔒 Round of 32 is locked in. Round of 16 opens automatically once those results are in.';
   } else if(!r16Locked){
-    statusEl.textContent = '✏️ Round of 16 is open — pick all the way to your champion. Your QF/SF/Final picks update automatically as you pick earlier rounds. Everything locks together at the first Round of 16 kickoff.';
+    statusEl.textContent = '✏️ Round of 16 is open — pick all the way to your champion. Your QF/SF/Final picks update automatically as you pick earlier rounds. Everything locks together at the first Round of 16 kickoff (10am PDT, July 4th).';
   } else {
     statusEl.textContent = '🔒 All bracket picks are locked in. Good luck!';
   }
@@ -1346,23 +1346,22 @@ async function loadCompare(){
 
   const currentRound = activeRound(fixtures);
 
-  // Render bracket rounds in order: Final → SF → QF → R16 → R32
+  // Render bracket rounds in order: Final → SF → QF → R16 → R32 → Group Stage
+  // R32 is always collapsed (it's done/historical); R16 through Final always expanded.
   const bracketRounds = [...ROUND_ORDER].reverse(); // FINAL first
 
   bracketRounds.forEach(round => {
     if (round === 'FINAL') {
-      // Champion picks — always visible, special card layout
       const finalMatch = fixtures.find(f => classifyRound(f.stage) === 'FINAL');
       if (!finalMatch) return;
-      const isActive = currentRound === 'FINAL';
-      const collapsed = !isActive;
+      const collapsed = false; // always expanded
       const toggleId = `cmpBracket_FINAL_toggle`;
       const bodyId = `cmpBracket_FINAL_body`;
       html += `<div class="section-title" style="margin-top:0">
         <h2>Champion picks</h2>
-        <button class="collapse-toggle" id="${toggleId}">${collapsed ? 'Show' : 'Hide'}</button>
+        <button class="collapse-toggle" id="${toggleId}">Hide</button>
       </div>`;
-      html += `<div id="${bodyId}" class="collapsible-body ${collapsed ? 'collapsed' : ''}">`;
+      html += `<div id="${bodyId}" class="collapsible-body">`;
       html += `<div class="champ-cards">`;
       all.forEach(p => {
         const champ = p.picks.bracket && p.picks.bracket[finalMatch.id];
@@ -1379,10 +1378,10 @@ async function loadCompare(){
       .filter(f => classifyRound(f.stage) === round && isRealTeam(f.home) && isRealTeam(f.away))
       .sort((a, b) => a.id - b.id);
 
-    if (roundMatches.length === 0) return; // round not set yet — skip entirely
+    if (roundMatches.length === 0) return;
 
-    const isActive = currentRound === round;
-    const collapsed = !isActive;
+    // R32 always collapsed (historical); R16/QF/SF always expanded
+    const collapsed = round === 'R32';
     const toggleId = `cmpBracket_${round}_toggle`;
     const bodyId = `cmpBracket_${round}_body`;
 
