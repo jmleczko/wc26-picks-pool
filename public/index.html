@@ -1834,12 +1834,12 @@ async function loadR32Results(){
 
   const medals = ['🥇','🥈','🥉'];
   list.innerHTML = `
-    <div class="lb-sub" style="margin-bottom:8px;">Correctly picked R32 winners out of 16 matches.</div>
+    <div class="lb-sub" style="margin-bottom:8px;">Points from correctly picked Round of 32 winners.</div>
     ${scored.map((r, i) => `
       <div class="lb-row">
         <span class="lb-rank">${medals[i] || (i + 1)}</span>
         <span class="lb-name">${r.name}</span>
-        <span class="lb-score">${r.score} / 16</span>
+        <span class="lb-score">${r.score} pt${r.score === 1 ? '' : 's'}</span>
       </div>
     `).join('')}
   `;
