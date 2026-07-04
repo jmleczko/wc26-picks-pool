@@ -1562,7 +1562,7 @@ function renderKoLbList(ranked){
   const medals = ['🥇','🥈','🥉'];
   return ranked.map((r,i) => `
     <div class="lb-row">
-      <span class="lb-rank">${medals[i]||(i+1)}</span>
+      <span class="lb-rank">${r.score > 0 && (i === 0 || ranked[i-1].score !== r.score || i < 3) ? (medals[i] || (i+1)) : (i+1)}</span>
       <span class="lb-name">${r.name}</span>
       <span class="lb-score">${r.score} pt${r.score===1?'':'s'}</span>
     </div>
@@ -1575,7 +1575,7 @@ function renderKoLbChart(ranked){
   const rows = ranked.map((r, i) => {
     const pct = Math.round((r.score / max) * 100);
     const medals = ['🥇','🥈','🥉'];
-    const rank = medals[i] || (i+1);
+    const rank = (r.score > 0 && i < 3) ? medals[i] : (i+1);
     return `<div class="lb-bar-row">
       <div class="lb-bar-label" title="${r.name}">${rank} ${r.name}</div>
       <div class="lb-bar-track">
@@ -1645,7 +1645,7 @@ async function loadLeaderboard(){
   const medals = ['🥇', '🥈', '🥉'];
   board.innerHTML = ranked.map((r, i) => `
     <div class="lb-row">
-      <span class="lb-rank">${medals[i] || (i + 1)}</span>
+      <span class="lb-rank">${r.score > 0 && i < 3 ? (medals[i] || (i + 1)) : (i + 1)}</span>
       <span class="lb-name">${r.name}</span>
       <span class="lb-score">${r.score} pt${r.score === 1 ? '' : 's'}</span>
     </div>
@@ -1837,7 +1837,7 @@ async function loadR32Results(){
     <div class="lb-sub" style="margin-bottom:8px;">Points from correctly picked Round of 32 winners.</div>
     ${scored.map((r, i) => `
       <div class="lb-row">
-        <span class="lb-rank">${medals[i] || (i + 1)}</span>
+        <span class="lb-rank">${r.score > 0 && i < 3 ? (medals[i] || (i + 1)) : (i + 1)}</span>
         <span class="lb-name">${r.name}</span>
         <span class="lb-score">${r.score} pt${r.score === 1 ? '' : 's'}</span>
       </div>
