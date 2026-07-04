@@ -470,7 +470,7 @@
   </div>
 
   <div class="live-section">
-    <div class="live-section-title">FIFA World Ranking (June 27)</div>
+    <div class="live-section-title">FIFA World Ranking (Round of 16)</div>
     <div id="rankList" class="rank-scroll"></div>
   </div>
 </aside>
@@ -551,14 +551,12 @@ function flag(name){
 }
 function teamLabel(name){ return `${flag(name)} ${canon(name)}`; }
 
-// FIFA World Ranking as of June 27, 2026 — the 32 teams that actually advanced to the
-// Round of 32, ranked 1-32 (the original June 11 ranking covered all 48, but with 16 teams
-// now eliminated, ranking just the survivors is more relevant heading into the knockouts).
+// FIFA World Ranking — Round of 16 teams only, ordered by user-specified ranking
+// reflecting the 16 teams remaining in the tournament.
 const FIFA_RANK = {
-  France:1, Mexico:2, Netherlands:3, Brazil:4, Spain:5, Switzerland:6, England:7, Morocco:8,
-  Colombia:9, Germany:10, Argentina:11, USA:12, 'Ivory Coast':13, Norway:14, Croatia:15, Portugal:16,
-  Japan:17, Belgium:18, Egypt:19, Canada:20, 'DR Congo':21, Sweden:22, Ghana:23, Australia:24,
-  Ecuador:25, BIH:26, 'South Africa':27, Paraguay:28, Senegal:29, Iran:30, Austria:31, 'Cabo Verde':32,
+  France:1, Argentina:2, Spain:3, England:4, Brazil:5, Morocco:6, Portugal:7, Mexico:8,
+  Belgium:9, Colombia:10, USA:11, Switzerland:12, Norway:13, Egypt:14,
+  Canada:15, Paraguay:16,
 };
 
 let myName = null;
