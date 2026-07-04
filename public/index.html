@@ -1229,12 +1229,23 @@ function renderBracket(fixtures){
   }
 
   let html = '';
-  ROUND_ORDER.forEach(round => {
+  [...ROUND_ORDER].reverse().forEach(round => {
     const matches = knockout.filter(f => f.round === round).sort((a, b) => a.id - b.id);
     if(matches.length === 0) return;
     const locked = isRoundLocked(round, gates);
 
-    html += `<div class="round-block"><div class="round-label">${ROUND_LABELS[round]}</div>`;
+    // R32 is locked and historical — collapse it by default, same as Compare tab
+    const collapsible = round === 'R32';
+    const collapseId = `myPicksR32Body`;
+    const toggleId = `myPicksR32Toggle`;
+
+    html += `<div class="round-block">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div class="round-label">${ROUND_LABELS[round]}</div>
+        ${collapsible ? `<button class="collapse-toggle" id="${toggleId}" style="font-size:11px;margin-bottom:4px;">Show</button>` : ''}
+      </div>
+      ${collapsible ? `<div id="${collapseId}" class="collapsible-body collapsed">` : ''}
+    `;
     matches.forEach(m => {
       const homeSlot = resolveSlot(m.home, m.id, 0, fixturesById);
       const awaySlot = resolveSlot(m.away, m.id, 1, fixturesById);
@@ -1270,7 +1281,7 @@ function renderBracket(fixtures){
         ${locked ? '<div class="placeholder-note" style="padding:0 12px 8px;">🔒 Locked</div>' : ''}
       </div>`;
     });
-    html += `</div>`;
+    html += `${collapsible ? '</div>' : ''}</div>`;
   });
 
   const finalMatch = knockout.find(f => f.round === 'FINAL');
@@ -1278,6 +1289,16 @@ function renderBracket(fixtures){
   html += `<div class="champion-banner"><div class="ct">Your champion</div><div class="cn">${champ ? '🏆 ' + teamLabel(champ) : '— pick through the bracket above —'}</div></div>`;
 
   area.innerHTML = html;
+
+  // Wire up R32 collapse toggle if present
+  const r32Toggle = document.getElementById('myPicksR32Toggle');
+  const r32Body = document.getElementById('myPicksR32Body');
+  if(r32Toggle && r32Body){
+    r32Toggle.addEventListener('click', () => {
+      const nowCollapsed = r32Body.classList.toggle('collapsed');
+      r32Toggle.textContent = nowCollapsed ? 'Show' : 'Hide';
+    });
+  }
 
   area.querySelectorAll('.pick-row').forEach(row => {
     row.addEventListener('click', () => {
