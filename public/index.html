@@ -1805,33 +1805,44 @@ document.getElementById('koLbRefreshBtn').addEventListener('click', loadKnockout
 loadKnockoutLeaderboard();
 setInterval(loadKnockoutLeaderboard, 5 * 60 * 1000);
 
-// ---------- Round of 32 Results ----------
+// ---------- Round of 32 Results (participant scores) ----------
 async function loadR32Results(){
   const list = document.getElementById('r32ResultsList');
-  const res = await fetch('/api/schedule').then(r => r.ok ? r.json() : null).catch(() => null);
-  const fixtures = res ? res.fixtures : [];
-  const r32 = fixtures
-    .filter(f => classifyRound(f.stage) === 'R32')
-    .sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
+  const [{ all }, scheduleRes] = await Promise.all([
+    fetchAllPicks(),
+    fetch('/api/schedule').then(r => r.ok ? r.json() : null).catch(() => null),
+  ]);
+  const fixtures = scheduleRes ? scheduleRes.fixtures : [];
 
-  if(r32.length === 0){
-    list.innerHTML = '<div class="live-empty">No Round of 32 results yet.</div>';
+  const r32Fixtures = fixtures.filter(f => classifyRound(f.stage) === 'R32');
+
+  if(r32Fixtures.length === 0){
+    list.innerHTML = '<div class="live-empty">No Round of 32 data available.</div>';
     return;
   }
 
-  list.innerHTML = r32.map(m => {
-    const homeWon = m.winner && canon(m.winner) === canon(m.home);
-    const awayWon = m.winner && canon(m.winner) === canon(m.away);
-    return `<div class="fixture-row" style="padding:8px 4px; border-bottom:1px solid var(--line);">
-      <span class="teams" style="flex:1; font-size:13px; ${homeWon ? 'font-weight:700;color:var(--chalk)' : 'opacity:0.5'}">
-        ${flag(canon(m.home))} ${teamLabel(m.home)}
-      </span>
-      <span style="font-size:11px; color:rgba(242,239,230,0.4); font-family:'Space Mono',monospace; flex:none; padding:0 8px;">vs</span>
-      <span class="teams" style="flex:1; text-align:right; font-size:13px; ${awayWon ? 'font-weight:700;color:var(--chalk)' : 'opacity:0.5'}">
-        ${teamLabel(m.away)} ${flag(canon(m.away))}
-      </span>
-    </div>`;
-  }).join('');
+  // Score each player on R32 only
+  const scored = all.map(p => {
+    let score = 0;
+    r32Fixtures.forEach(f => {
+      if(!f.winner) return;
+      const pick = p.picks.bracket && p.picks.bracket[f.id];
+      if(pick && canon(pick) === canon(f.winner)) score++;
+    });
+    return { name: p.name, score };
+  }).sort((a, b) => b.score - a.score);
+
+  const medals = ['🥇','🥈','🥉'];
+  list.innerHTML = `
+    <div class="lb-sub" style="margin-bottom:8px;">Correctly picked R32 winners out of 16 matches.</div>
+    ${scored.map((r, i) => `
+      <div class="lb-row">
+        <span class="lb-rank">${medals[i] || (i + 1)}</span>
+        <span class="lb-name">${r.name}</span>
+        <span class="lb-score">${r.score} / 16</span>
+      </div>
+    `).join('')}
+  `;
 }
 
 // Wire up R32 results toggle
