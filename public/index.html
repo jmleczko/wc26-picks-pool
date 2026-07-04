@@ -159,7 +159,8 @@
     box-shadow:0 0 0 1px rgba(217,165,61,0.25), 0 8px 24px rgba(217,165,61,0.12);
   }
   .lb-highlighted .lb-head h2{color:var(--gold-soft);}
-  @media(min-width:1000px){#leaderboardBox, #knockoutLeaderboardBox{max-width:1148px;}}
+  #r32ResultsBox{background:var(--panel-bg); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin:12px 16px 0; max-width:868px; margin-left:auto; margin-right:auto;}
+  @media(min-width:1000px){#leaderboardBox, #knockoutLeaderboardBox, #r32ResultsBox{max-width:1148px;}}
   .lb-head{display:flex; align-items:center; justify-content:space-between;}
   .lb-head h2{font-family:'Anton',sans-serif; font-size:15px; margin:0; text-transform:uppercase; letter-spacing:0.03em;}
   .lb-head button{width:auto; padding:5px 10px; font-size:12px;}
@@ -370,6 +371,18 @@
   </div>
   <div class="lb-sub">1 point per correctly-picked winner, Round of 16 through the Final, scored live as real results come in.</div>
   <div id="knockoutLeaderboardList"><div class="live-empty">Loading…</div></div>
+</section>
+
+<section id="r32ResultsBox">
+  <div class="lb-head">
+    <h2>Round of 32 Results</h2>
+    <div class="lb-head-actions">
+      <button class="collapse-toggle" id="r32ResultsToggle">Show</button>
+    </div>
+  </div>
+  <div id="r32ResultsBody" class="collapsible-body collapsed">
+    <div id="r32ResultsList"><div class="live-empty">Loading…</div></div>
+  </div>
 </section>
 
 <section id="leaderboardBox">
@@ -1791,6 +1804,44 @@ async function loadSchedule(){
 document.getElementById('koLbRefreshBtn').addEventListener('click', loadKnockoutLeaderboard);
 loadKnockoutLeaderboard();
 setInterval(loadKnockoutLeaderboard, 5 * 60 * 1000);
+
+// ---------- Round of 32 Results ----------
+async function loadR32Results(){
+  const list = document.getElementById('r32ResultsList');
+  const res = await fetch('/api/schedule').then(r => r.ok ? r.json() : null).catch(() => null);
+  const fixtures = res ? res.fixtures : [];
+  const r32 = fixtures
+    .filter(f => classifyRound(f.stage) === 'R32')
+    .sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
+
+  if(r32.length === 0){
+    list.innerHTML = '<div class="live-empty">No Round of 32 results yet.</div>';
+    return;
+  }
+
+  list.innerHTML = r32.map(m => {
+    const homeWon = m.winner && canon(m.winner) === canon(m.home);
+    const awayWon = m.winner && canon(m.winner) === canon(m.away);
+    return `<div class="fixture-row" style="padding:8px 4px; border-bottom:1px solid var(--line);">
+      <span class="teams" style="flex:1; font-size:13px; ${homeWon ? 'font-weight:700;color:var(--chalk)' : 'opacity:0.5'}">
+        ${flag(canon(m.home))} ${teamLabel(m.home)}
+      </span>
+      <span style="font-size:11px; color:rgba(242,239,230,0.4); font-family:'Space Mono',monospace; flex:none; padding:0 8px;">vs</span>
+      <span class="teams" style="flex:1; text-align:right; font-size:13px; ${awayWon ? 'font-weight:700;color:var(--chalk)' : 'opacity:0.5'}">
+        ${teamLabel(m.away)} ${flag(canon(m.away))}
+      </span>
+    </div>`;
+  }).join('');
+}
+
+// Wire up R32 results toggle
+const r32Toggle = document.getElementById('r32ResultsToggle');
+const r32Body = document.getElementById('r32ResultsBody');
+r32Toggle.addEventListener('click', () => {
+  const collapsed = r32Body.classList.toggle('collapsed');
+  r32Toggle.textContent = collapsed ? 'Show' : 'Hide';
+  if(!collapsed) loadR32Results(); // load on first expand
+});
 
 // Re-check group lock times periodically too, so a tab left open as a group's kickoff
 // passes disables that group's editing on its own, without needing a manual refresh.
