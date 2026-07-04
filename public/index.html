@@ -1393,11 +1393,24 @@ async function loadCompare(){
       return;
     }
 
-    const roundMatches = fixtures
-      .filter(f => classifyRound(f.stage) === round && isRealTeam(f.home) && isRealTeam(f.away))
+    // For QF/SF/Final: real teams may not be confirmed yet — use all fixtures for the round
+    // and fall back to player picks as the team labels when official teams are null.
+    const allRoundMatches = fixtures
+      .filter(f => classifyRound(f.stage) === round)
       .sort((a, b) => a.id - b.id);
 
+    // For R16 and R32 we only show confirmed matchups; for QF+ show all (speculative picks included)
+    const roundMatches = (round === 'R16' || round === 'R32')
+      ? allRoundMatches.filter(f => isRealTeam(f.home) && isRealTeam(f.away))
+      : allRoundMatches;
+
     if (roundMatches.length === 0) return;
+
+    // Check if any player has actually picked any of these matches — if not, skip the section
+    const anyPicked = round !== 'R16' && round !== 'R32'
+      ? roundMatches.some(m => all.some(p => p.picks.bracket && p.picks.bracket[m.id]))
+      : true;
+    if (!anyPicked) return;
 
     // R32 always collapsed (historical); R16/QF/SF always expanded
     const collapsed = round === 'R32';
@@ -1412,8 +1425,15 @@ async function loadCompare(){
     html += `<div class="cmp-table-wrap"><table class="cmp"><thead><tr><th>Match</th>`;
     all.forEach(p => html += `<th>${p.name}</th>`);
     html += `</tr></thead><tbody>`;
-    roundMatches.forEach(m => {
-      html += `<tr><td class="grp">${teamLabel(m.home)} vs ${teamLabel(m.away)}</td>`;
+    roundMatches.forEach((m, idx) => {
+      // Build match label — use real team names if available, otherwise "Match N"
+      const homeLabel = isRealTeam(m.home) ? teamLabel(m.home) : null;
+      const awayLabel = isRealTeam(m.away) ? teamLabel(m.away) : null;
+      const matchLabel = (homeLabel && awayLabel)
+        ? `${homeLabel} vs ${awayLabel}`
+        : `${ROUND_LABELS[round]} Match ${idx + 1}`;
+
+      html += `<tr><td class="grp">${matchLabel}</td>`;
       all.forEach(p => {
         const pick = p.picks.bracket && p.picks.bracket[m.id];
         html += `<td>${pick ? teamLabel(pick) : '—'}</td>`;
