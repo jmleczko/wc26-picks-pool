@@ -341,7 +341,7 @@
     <img class="badge" src="/assets/fifa-badge.png" width="56" height="56" alt="FIFA World Cup 26">
     <div>
       <h1 class="display">World Cup <span>2026</span> Picks</h1>
-      <div class="sub">Group stage is final — the knockout bracket is live. Round of 32 picks are locked until last game concludes. Picking will then open up for Round of 16 through Final and picks will be locked at the start of the first game on July 4th.</div>
+      <div class="sub">Round of 32 is complete — now pick your Round of 16 through Final. Picks lock tomorrow at 10am PDT when the first Round of 16 match starts.</div>
     </div>
   </div>
   <div class="who-bar">
@@ -368,7 +368,7 @@
       <button class="btn btn-ghost" id="koLbRefreshBtn">↻</button>
     </div>
   </div>
-  <div class="lb-sub">1 point per correctly-picked winner, Round of 32 through the Final, scored live as real results come in.</div>
+  <div class="lb-sub">1 point per correctly-picked winner, Round of 16 through the Final, scored live as real results come in.</div>
   <div id="knockoutLeaderboardList"><div class="live-empty">Loading…</div></div>
 </section>
 
@@ -1228,7 +1228,9 @@ function renderBracket(fixtures){
     statusEl.textContent = '🔒 All bracket picks are locked in. Good luck!';
   }
 
-  let html = '';
+  const finalMatch = knockout.find(f => f.round === 'FINAL');
+  const champ = finalMatch ? picks.bracket[finalMatch.id] : null;
+  let html = `<div class="champion-banner"><div class="ct">Your champion</div><div class="cn">${champ ? '🏆 ' + teamLabel(champ) : '— pick through the bracket below —'}</div></div>`;
   [...ROUND_ORDER].reverse().forEach(round => {
     const matches = knockout.filter(f => f.round === round).sort((a, b) => a.id - b.id);
     if(matches.length === 0) return;
@@ -1283,10 +1285,6 @@ function renderBracket(fixtures){
     });
     html += `${collapsible ? '</div>' : ''}</div>`;
   });
-
-  const finalMatch = knockout.find(f => f.round === 'FINAL');
-  const champ = finalMatch ? picks.bracket[finalMatch.id] : null;
-  html += `<div class="champion-banner"><div class="ct">Your champion</div><div class="cn">${champ ? '🏆 ' + teamLabel(champ) : '— pick through the bracket above —'}</div></div>`;
 
   area.innerHTML = html;
 
@@ -1505,14 +1503,17 @@ function computeScore(picks, standings){
   return score;
 }
 
-// Knockout score: 1 point per match (Round of 32 through the Final) where the player's pick
-// matches the real winner. `winner` is a team NAME stored by the sync Worker — never the
-// score itself — so this scores outcomes without this code ever touching numeric goals.
+// Knockout score: 1 point per match (Round of 16 through the Final) where the player's pick
+// matches the real winner. Round of 32 is intentionally excluded — scoring starts fresh at R16.
+// `winner` is a team NAME stored by the sync Worker — never the score itself — so this scores
+// outcomes without this code ever touching numeric goals.
 // The third-place playoff is intentionally excluded; it doesn't feed into the bracket.
 function computeKnockoutScore(picks, fixtures){
   let score = 0;
   (fixtures || []).forEach(f => {
-    if(!classifyRound(f.stage)) return; // skips GROUP_STAGE, THIRD_PLACE, anything unrecognized
+    const round = classifyRound(f.stage);
+    if(!round) return; // skips GROUP_STAGE, THIRD_PLACE, anything unrecognized
+    if(round === 'R32') return; // R32 excluded — scoring starts at R16
     if(!f.winner) return; // not decided yet
     const pick = picks.bracket && picks.bracket[f.id];
     if(pick && canon(pick) === canon(f.winner)) score += 1;
