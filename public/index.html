@@ -1577,11 +1577,13 @@ function renderKoLbChart(ranked){
     const pct = Math.round((r.score / max) * 100);
     const medals = ['🥇','🥈','🥉'];
     const rank = (r.score > 0 && i < 3) ? medals[i] : (i+1);
+    // Rotate hue per player so each gets a distinct body color
+    const hue = (i * 67) % 360; // 67° steps give good spread across the color wheel
     return `<div class="lb-bar-row">
       <div class="lb-bar-label" title="${r.name}">${rank} ${r.name}</div>
       <div class="lb-bar-track">
         <div class="lb-bar-fill" style="width:${pct}%">
-          <div class="lb-bar-player">${PLAYER_IMG}</div>
+          <div class="lb-bar-player" style="filter:hue-rotate(${hue}deg);">${PLAYER_IMG}</div>
         </div>
       </div>
       <div class="lb-bar-pts">${r.score} pt${r.score===1?'':'s'}</div>
