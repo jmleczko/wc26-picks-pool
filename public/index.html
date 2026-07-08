@@ -1290,19 +1290,35 @@ function renderBracket(fixtures){
         return;
       }
 
-      // At least one side is known — render as a pickable match
-      // A speculative match is only pickable if BOTH sides are resolved (real or speculative)
+      // For QF matches: check if the player had a stake — i.e. they correctly picked
+      // at least one of the two R16 feeder match winners. If they got both feeders wrong
+      // (or didn't pick either), this QF slot is greyed out for them specifically.
+      let playerHasStake = true;
+      if(round === 'QF' && QF_OPEN_IDS.has(m.id)){
+        const feeders = BRACKET_TREE[m.id]; // [r16MatchIdA, r16MatchIdB]
+        if(feeders){
+          const pickedEitherWinner = feeders.some(feederId => {
+            const feederFixture = fixturesById[feederId];
+            if(!feederFixture || !feederFixture.winner) return false; // result not in yet
+            const playerPick = picks.bracket[feederId];
+            return playerPick && canon(playerPick) === canon(feederFixture.winner);
+          });
+          playerHasStake = pickedEitherWinner;
+        }
+      }
+
       const bothResolved = homeSlot.team && awaySlot.team;
       const isSpeculative = homeSlot.speculative || awaySlot.speculative;
-      const pickable = bothResolved && (!locked || QF_OPEN_IDS.has(m.id));
+      const pickable = bothResolved && (!locked || QF_OPEN_IDS.has(m.id)) && playerHasStake;
 
       const picked = picks.bracket[m.id];
 
       const homeLabel = homeSlot.team ? teamLabel(homeSlot.team) : 'TBD';
       const awayLabel = awaySlot.team ? teamLabel(awaySlot.team) : 'TBD';
       const speculativeNote = isSpeculative ? '<div class="placeholder-note" style="padding:0 12px 4px;font-size:10px;opacity:0.55;">✦ Based on your picks</div>' : '';
+      const noStakeNote = !playerHasStake && round === 'QF' ? '<div class="placeholder-note" style="padding:0 12px 8px;font-size:10px;opacity:0.55;">⚠️ You didn\'t pick either team to advance</div>' : '';
 
-      html += `<div class="match ${locked ? 'locked' : ''}">
+      html += `<div class="match ${locked || !playerHasStake ? 'locked' : ''}">
         ${speculativeNote}
         <div class="pick-row ${picked === homeSlot.team ? 'selected' : ''}" data-id="${m.id}" data-team="${homeSlot.team ? encodeURIComponent(homeSlot.team) : ''}" data-locked="${!pickable || !homeSlot.team}">
           <div class="dot"></div>
@@ -1312,7 +1328,8 @@ function renderBracket(fixtures){
           <div class="dot"></div>
           <div class="pname">${awayLabel}${awaySlot.speculative ? ' <span style="opacity:0.45;font-size:10px">(your pick)</span>' : ''}</div>
         </div>
-        ${locked ? '<div class="placeholder-note" style="padding:0 12px 8px;">🔒 Locked</div>' : ''}
+        ${locked && playerHasStake ? '<div class="placeholder-note" style="padding:0 12px 8px;">🔒 Locked</div>' : ''}
+        ${noStakeNote}
       </div>`;
     });
     html += `${collapsible ? '</div>' : ''}</div>`;
