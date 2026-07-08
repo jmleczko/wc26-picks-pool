@@ -60,19 +60,24 @@ function bracketLockGates(fixtures) {
 }
 
 // QF match IDs that are open for picking even though the R16 gate has passed.
-// These are set explicitly here because QF picks were unavailable to some players
-// during the R16 pick window due to speculative bracket not fully resolving.
+// QF uses its own gate (earliest QF kickoff) rather than the R16 gate.
 const QF_OPEN_IDS = new Set(['537383', '537384', '537385', '537386']);
 
 // Which gate (if any) applies to a given match id, based on that match's own round.
 function gateForMatch(matchId, fixtures, gates) {
-  // QF picks are explicitly open regardless of the R16 gate
-  if (QF_OPEN_IDS.has(String(matchId))) return null;
   const f = (fixtures || []).find(x => String(x.id) === String(matchId));
   if (!f) return null;
   const round = classifyRound(f.stage);
   if (round === 'R32') return gates.r32Gate;
-  if (round === 'R16' || round === 'QF' || round === 'SF' || round === 'FINAL') return gates.r16Gate;
+  if (round === 'R16' || round === 'SF' || round === 'FINAL') return gates.r16Gate;
+  if (round === 'QF') {
+    // QF locks at its own earliest kickoff, not the R16 gate
+    const qfTimes = (fixtures || [])
+      .filter(x => classifyRound(x.stage) === 'QF' && x.kickoff)
+      .map(x => new Date(x.kickoff).getTime())
+      .filter(t => !Number.isNaN(t));
+    return qfTimes.length ? Math.min(...qfTimes) : null;
+  }
   return null;
 }
 
