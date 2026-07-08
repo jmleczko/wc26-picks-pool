@@ -59,8 +59,15 @@ function bracketLockGates(fixtures) {
   };
 }
 
+// QF match IDs that are open for picking even though the R16 gate has passed.
+// These are set explicitly here because QF picks were unavailable to some players
+// during the R16 pick window due to speculative bracket not fully resolving.
+const QF_OPEN_IDS = new Set(['537383', '537384', '537385', '537386']);
+
 // Which gate (if any) applies to a given match id, based on that match's own round.
 function gateForMatch(matchId, fixtures, gates) {
+  // QF picks are explicitly open regardless of the R16 gate
+  if (QF_OPEN_IDS.has(String(matchId))) return null;
   const f = (fixtures || []).find(x => String(x.id) === String(matchId));
   if (!f) return null;
   const round = classifyRound(f.stage);
