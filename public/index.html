@@ -1132,7 +1132,8 @@ function isRealTeam(name){
 
 async function loadBracket(){
   const scheduleRes = await fetch('/api/schedule').then(r => r.ok ? r.json() : null).catch(() => null);
-  renderBracket(scheduleRes ? scheduleRes.fixtures : []);
+  window._bracketFixtures = scheduleRes ? scheduleRes.fixtures : [];
+  renderBracket(window._bracketFixtures);
 }
 
 // Two lock gates, not per-match: all of Round of 32 locks together at its earliest kickoff,
@@ -1154,7 +1155,15 @@ function isRoundLocked(round, gates){
   if(isLatePicker) return false;
   const now = Date.now();
   if(round === 'R32') return gates.r32Gate != null && now >= gates.r32Gate;
-  if(round === 'QF') return false; // QF explicitly open — see QF_OPEN_IDS
+  if(round === 'QF') {
+    // QF uses its own gate (earliest QF kickoff) rather than the R16 gate
+    const qfTimes = [...QF_OPEN_IDS].map(id => {
+      const f = (window._bracketFixtures || []).find(x => x.id === id);
+      return f && f.kickoff ? new Date(f.kickoff).getTime() : null;
+    }).filter(Boolean);
+    const qfGate = qfTimes.length ? Math.min(...qfTimes) : null;
+    return qfGate != null && now >= qfGate;
+  }
   return gates.r16Gate != null && now >= gates.r16Gate; // R16, SF, FINAL still locked
 }
 
