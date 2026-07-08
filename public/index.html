@@ -1146,11 +1146,16 @@ function bracketLockGates(knockout){
     r16Gate: r16Times.length ? Math.min(...r16Times) : null,
   };
 }
+// QF matches open for picking even though the R16 gate has passed.
+// Mirrors the same constant in [name].js — must be kept in sync if changed.
+const QF_OPEN_IDS = new Set([537383, 537384, 537385, 537386]);
+
 function isRoundLocked(round, gates){
-  if(isLatePicker) return false; // exempted name — backend independently allows their saves too
+  if(isLatePicker) return false;
   const now = Date.now();
   if(round === 'R32') return gates.r32Gate != null && now >= gates.r32Gate;
-  return gates.r16Gate != null && now >= gates.r16Gate; // R16, QF, SF, FINAL share one gate
+  if(round === 'QF') return false; // QF explicitly open — see QF_OPEN_IDS
+  return gates.r16Gate != null && now >= gates.r16Gate; // R16, SF, FINAL still locked
 }
 
 // Bracket tree — maps each QF/SF/Final fixture ID to the two R16/QF/SF fixture IDs
@@ -1237,7 +1242,13 @@ function renderBracket(fixtures){
   } else if(!r16Locked){
     statusEl.textContent = '✏️ Round of 16 is open — pick all the way to your champion. Your QF/SF/Final picks update automatically as you pick earlier rounds. Everything locks together at the first Round of 16 kickoff (10am PDT, July 4th).';
   } else {
-    statusEl.textContent = '🔒 All bracket picks are locked in. Good luck!';
+    // QF is explicitly open even though the R16 gate has passed
+    const qfMatch = knockout.find(f => f.round === 'QF');
+    if(qfMatch) {
+      statusEl.textContent = '✏️ Quarterfinal picks are open — choose your QF winners. Round of 16 picks remain locked.';
+    } else {
+      statusEl.textContent = '🔒 All bracket picks are locked in. Good luck!';
+    }
   }
 
   const finalMatch = knockout.find(f => f.round === 'FINAL');
@@ -1274,7 +1285,7 @@ function renderBracket(fixtures){
       // A speculative match is only pickable if BOTH sides are resolved (real or speculative)
       const bothResolved = homeSlot.team && awaySlot.team;
       const isSpeculative = homeSlot.speculative || awaySlot.speculative;
-      const pickable = bothResolved && !locked;
+      const pickable = bothResolved && (!locked || QF_OPEN_IDS.has(m.id));
 
       const picked = picks.bracket[m.id];
 
