@@ -1296,60 +1296,16 @@ function renderBracket(fixtures){
       const isOpenRound = QF_OPEN_IDS.has(m.id) || SF_OPEN_IDS.has(m.id);
       const roundOpen = !locked || isOpenRound;
 
-      // Per-team pickability for open rounds (QF/SF):
-      // A player can only pick a team if they correctly predicted that team
-      // to advance from the feeder match. If they got the feeder wrong,
-      // that team's row is greyed out — even if the match is otherwise open.
-      let homePickable = roundOpen && !!homeSlot.team;
-      let awayPickable = roundOpen && !!awaySlot.team;
-
-      if(isOpenRound && bothResolved){
-        const feeders = BRACKET_TREE[m.id]; // [feederIdForHome, feederIdForAway]
-        if(feeders){
-          // Home team: player must have picked the winner of feeder[0]
-          const homeFeeder = fixturesById[feeders[0]];
-          if(homeFeeder && homeFeeder.winner){
-            const playerHomePick = picks.bracket[feeders[0]];
-            homePickable = homePickable && !!(playerHomePick && canon(playerHomePick) === canon(homeFeeder.winner));
-          }
-          // Away team: player must have picked the winner of feeder[1]
-          const awayFeeder = fixturesById[feeders[1]];
-          if(awayFeeder && awayFeeder.winner){
-            const playerAwayPick = picks.bracket[feeders[1]];
-            awayPickable = awayPickable && !!(playerAwayPick && canon(playerAwayPick) === canon(awayFeeder.winner));
-          }
-        }
-      }
-
-      const playerHasStake = homePickable || awayPickable;
-      let picked = picks.bracket[m.id];
-
-      // Auto-select if exactly one team is pickable and no pick yet
-      if(isOpenRound && bothResolved && !picked && homePickable && !awayPickable && homeSlot.team){
-        picks.bracket[m.id] = homeSlot.team;
-        picked = homeSlot.team;
-        queueSave();
-      } else if(isOpenRound && bothResolved && !picked && awayPickable && !homePickable && awaySlot.team){
-        picks.bracket[m.id] = awaySlot.team;
-        picked = awaySlot.team;
-        queueSave();
-      }
+      // Open picking — everyone can pick any team in open rounds
+      const homePickable = roundOpen && !!homeSlot.team;
+      const awayPickable = roundOpen && !!awaySlot.team;
+      const picked = picks.bracket[m.id];
 
       const homeLabel = homeSlot.team ? teamLabel(homeSlot.team) : 'TBD';
       const awayLabel = awaySlot.team ? teamLabel(awaySlot.team) : 'TBD';
       const speculativeNote = isSpeculative ? '<div class="placeholder-note" style="padding:0 12px 4px;font-size:10px;opacity:0.55;">✦ Based on your picks</div>' : '';
-      // Build the contextual note — only show on open (unlocked) rounds
-      let stakeNote = '';
-      if(isOpenRound && !locked){
-        if(!playerHasStake){
-          stakeNote = '<div class="placeholder-note" style="padding:0 12px 8px;font-size:10px;opacity:0.55;">⚠️ The team(s) you chose did not advance — this match is not available to you.</div>';
-        } else if(homePickable !== awayPickable){
-          // Only one team is pickable
-          stakeNote = '<div class="placeholder-note" style="padding:0 12px 8px;font-size:10px;opacity:0.55;">ℹ️ One of these teams you did not choose to advance — you have only one option to pick.</div>';
-        }
-      }
 
-      html += `<div class="match ${(!playerHasStake && isOpenRound) || (locked && !isOpenRound) ? 'locked' : ''}">
+      html += `<div class="match ${locked && !isOpenRound ? 'locked' : ''}">
         ${speculativeNote}
         <div class="pick-row ${picked === homeSlot.team ? 'selected' : ''}" data-id="${m.id}" data-team="${homeSlot.team ? encodeURIComponent(homeSlot.team) : ''}" data-locked="${!homePickable || !homeSlot.team}">
           <div class="dot"></div>
@@ -1359,8 +1315,7 @@ function renderBracket(fixtures){
           <div class="dot"></div>
           <div class="pname">${awayLabel}${awaySlot.speculative ? ' <span style="opacity:0.45;font-size:10px">(your pick)</span>' : ''}</div>
         </div>
-        ${locked && playerHasStake ? '<div class="placeholder-note" style="padding:0 12px 8px;">🔒 Locked</div>' : ''}
-        ${stakeNote}
+        ${locked && !isOpenRound ? '<div class="placeholder-note" style="padding:0 12px 8px;">🔒 Locked</div>' : ''}
       </div>`;
     });
     html += `${collapsible ? '</div>' : ''}</div>`;
