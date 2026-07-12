@@ -60,10 +60,6 @@ function bracketLockGates(fixtures) {
 }
 
 // Which gate (if any) applies to a given match id, based on that match's own round.
-// QF and SF match IDs open for picking with their own kickoff-based gates
-const QF_OPEN_IDS = new Set(['537383', '537384', '537385', '537386']);
-const SF_OPEN_IDS = new Set(['537387', '537388']);
-
 function gateForMatch(matchId, fixtures, gates) {
   const f = (fixtures || []).find(x => String(x.id) === String(matchId));
   if (!f) return null;
@@ -71,18 +67,18 @@ function gateForMatch(matchId, fixtures, gates) {
   if (round === 'R32') return gates.r32Gate;
   if (round === 'R16' || round === 'FINAL') return gates.r16Gate;
   if (round === 'QF') {
-    const qfTimes = (fixtures || [])
+    const times = (fixtures || [])
       .filter(x => classifyRound(x.stage) === 'QF' && x.kickoff)
       .map(x => new Date(x.kickoff).getTime())
       .filter(t => !Number.isNaN(t));
-    return qfTimes.length ? Math.min(...qfTimes) : null;
+    return times.length ? Math.min(...times) : null;
   }
   if (round === 'SF') {
-    const sfTimes = (fixtures || [])
+    const times = (fixtures || [])
       .filter(x => classifyRound(x.stage) === 'SF' && x.kickoff)
       .map(x => new Date(x.kickoff).getTime())
       .filter(t => !Number.isNaN(t));
-    return sfTimes.length ? Math.min(...sfTimes) : null;
+    return times.length ? Math.min(...times) : null;
   }
   return null;
 }
