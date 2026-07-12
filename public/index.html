@@ -473,7 +473,7 @@
   </div>
 
   <div class="live-section">
-    <div class="live-section-title">Playing Tomorrow</div>
+    <div class="live-section-title">Next Game</div>
     <div id="liveTomorrowList"><div class="live-empty">Loading…</div></div>
   </div>
 
@@ -912,30 +912,31 @@ async function loadLiveRail(){
 function renderFixtureBuckets(fixtures){
   const now = new Date();
   const todayStr = now.toDateString();
-  const tomorrow = new Date(now); tomorrow.setDate(now.getDate() + 1);
-  const tomorrowStr = tomorrow.toDateString();
 
-  const live = [], later = [], tomorrowList = [];
+  const live = [], later = [], upcoming = [];
   (fixtures || []).forEach(f => {
     if(!f.kickoff) return;
+    if(!isRealTeam(f.home) || !isRealTeam(f.away)) return; // skip TBD matches
     const k = new Date(f.kickoff);
-    const end = new Date(k.getTime() + 135 * 60000); // ~2h15m match window, no scores ever stored or shown
+    const end = new Date(k.getTime() + 135 * 60000);
     if(now >= k && now <= end){
       live.push(f);
     } else if(k > now && k.toDateString() === todayStr){
       later.push(f);
-    } else if(k.toDateString() === tomorrowStr){
-      tomorrowList.push(f);
+    } else if(k > now){
+      upcoming.push(f);
     }
   });
   live.sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
   later.sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
-  tomorrowList.sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
+  upcoming.sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff));
 
-  // Always shown in Pacific Time specifically (not the viewer's own device timezone), so
-  // everyone in the pool is reading the same clock regardless of where they actually are.
   const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-US', {
     hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles', timeZoneName: 'short',
+  });
+
+  const fmtDayDate = (iso) => new Date(iso).toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', timeZone: 'America/Los_Angeles',
   });
 
   const nowEl = document.getElementById('liveNowList');
@@ -943,7 +944,7 @@ function renderFixtureBuckets(fixtures){
     <div class="fixture-row">
       <span class="live-dot"></span>
       <span class="grp-tag">${f.group || ''}</span>
-      <span class="teams">${flag(f.home)} ${canon(f.home)} vs ${flag(f.away)} ${canon(f.away)}</span>
+      <span class="teams">${flag(canon(f.home))} ${canon(f.home)} vs ${flag(canon(f.away))} ${canon(f.away)}</span>
     </div>
   `).join('') : '<div class="live-empty">No matches in progress right now.</div>';
 
@@ -951,19 +952,30 @@ function renderFixtureBuckets(fixtures){
   laterEl.innerHTML = later.length ? later.map(f => `
     <div class="fixture-row">
       <span class="grp-tag">${f.group || ''}</span>
-      <span class="teams">${flag(f.home)} ${canon(f.home)} vs ${flag(f.away)} ${canon(f.away)}</span>
+      <span class="teams">${flag(canon(f.home))} ${canon(f.home)} vs ${flag(canon(f.away))} ${canon(f.away)}</span>
       <span class="time">${fmtTime(f.kickoff)}</span>
     </div>
   `).join('') : '<div class="live-empty">No more matches later today.</div>';
 
+  // "Next Game" — shows only the very next upcoming match with full day, date and PT time
   const tmrEl = document.getElementById('liveTomorrowList');
-  tmrEl.innerHTML = tomorrowList.length ? tomorrowList.map(f => `
-    <div class="fixture-row">
-      <span class="grp-tag">${f.group || ''}</span>
-      <span class="teams">${flag(f.home)} ${canon(f.home)} vs ${flag(f.away)} ${canon(f.away)}</span>
-      <span class="time">${fmtTime(f.kickoff)}</span>
-    </div>
-  `).join('') : '<div class="live-empty">No matches scheduled tomorrow.</div>';
+  const nextMatch = upcoming[0];
+  if(nextMatch){
+    const dayDate = fmtDayDate(nextMatch.kickoff);
+    const time = fmtTime(nextMatch.kickoff);
+    tmrEl.innerHTML = `
+      <div class="fixture-row" style="flex-direction:column;align-items:flex-start;gap:4px;">
+        <div style="font-size:10.5px;color:var(--gold-soft);font-family:'Space Mono',monospace;">${dayDate}</div>
+        <div class="fixture-row" style="padding:0;border:none;">
+          <span class="grp-tag">${nextMatch.group || ''}</span>
+          <span class="teams">${flag(canon(nextMatch.home))} ${canon(nextMatch.home)} vs ${flag(canon(nextMatch.away))} ${canon(nextMatch.away)}</span>
+          <span class="time">${time}</span>
+        </div>
+      </div>
+    `;
+  } else {
+    tmrEl.innerHTML = '<div class="live-empty">No upcoming matches scheduled.</div>';
+  }
 }
 
 function renderStandings(standings){
