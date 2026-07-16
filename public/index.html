@@ -1161,6 +1161,7 @@ function bracketLockGates(knockout){
 }
 const QF_OPEN_IDS = new Set([537383, 537384, 537385, 537386]);
 const SF_OPEN_IDS = new Set([537387, 537388]);
+const FINAL_OPEN_IDS = new Set([537389, 537390]); // Third Place + Final
 
 function isRoundLocked(round, gates){
   if(isLatePicker) return false;
@@ -1182,7 +1183,16 @@ function isRoundLocked(round, gates){
     const sfGate = sfTimes.length ? Math.min(...sfTimes) : null;
     return sfGate != null && now >= sfGate;
   }
-  return gates.r16Gate != null && now >= gates.r16Gate; // R16, FINAL still use R16 gate
+  if(round === 'FINAL') {
+    // Final and Third Place lock at the earliest kickoff (Third Place, Jul 18)
+    const finalTimes = [...FINAL_OPEN_IDS].map(id => {
+      const f = (window._bracketFixtures || []).find(x => x.id === id);
+      return f && f.kickoff ? new Date(f.kickoff).getTime() : null;
+    }).filter(Boolean);
+    const finalGate = finalTimes.length ? Math.min(...finalTimes) : null;
+    return finalGate != null && now >= finalGate;
+  }
+  return gates.r16Gate != null && now >= gates.r16Gate; // R16 still locked
 }
 
 // Bracket tree — maps each QF/SF/Final fixture ID to the two R16/QF/SF fixture IDs
@@ -1275,6 +1285,29 @@ function renderBracket(fixtures){
   const finalMatch = knockout.find(f => f.round === 'FINAL');
   const champ = finalMatch ? picks.bracket[finalMatch.id] : null;
   let html = `<div class="champion-banner"><div class="ct">Your champion</div><div class="cn">${champ ? '🏆 ' + teamLabel(champ) : '— pick through the bracket below —'}</div></div>`;
+
+  // Third Place playoff — rendered separately since classifyRound returns null for it
+  const thirdMatch = (fixtures || []).find(f => f.stage && f.stage.toUpperCase().includes('THIRD'));
+  if(thirdMatch && isRealTeam(thirdMatch.home) && isRealTeam(thirdMatch.away)){
+    const tLocked = isRoundLocked('FINAL', gates); // shares gate with Final
+    const tOpen = FINAL_OPEN_IDS.has(thirdMatch.id);
+    const tHome = thirdMatch.home;
+    const tAway = thirdMatch.away;
+    const tPicked = picks.bracket[thirdMatch.id];
+    const tPickable = !tLocked || tOpen;
+    html += `<div class="round-block"><div class="round-label">Third Place</div>
+      <div class="match ${tLocked && !tOpen ? 'locked' : ''}">
+        <div class="pick-row ${tPicked === tHome ? 'selected' : ''}" data-id="${thirdMatch.id}" data-team="${encodeURIComponent(tHome)}" data-locked="${!tPickable}">
+          <div class="dot"></div><div class="pname">${flag(canon(tHome))} ${teamLabel(tHome)}</div>
+        </div>
+        <div class="pick-row ${tPicked === tAway ? 'selected' : ''}" data-id="${thirdMatch.id}" data-team="${encodeURIComponent(tAway)}" data-locked="${!tPickable}">
+          <div class="dot"></div><div class="pname">${flag(canon(tAway))} ${teamLabel(tAway)}</div>
+        </div>
+        ${tLocked && !tOpen ? '<div class="placeholder-note" style="padding:0 12px 8px;">🔒 Locked</div>' : ''}
+      </div>
+    </div>`;
+  }
+
   [...ROUND_ORDER].reverse().forEach(round => {
     const matches = knockout.filter(f => f.round === round).sort((a, b) => a.id - b.id);
     if(matches.length === 0) return;
@@ -1305,7 +1338,7 @@ function renderBracket(fixtures){
       // At least one side is known — render as a pickable match
       const bothResolved = homeSlot.team && awaySlot.team;
       const isSpeculative = homeSlot.speculative || awaySlot.speculative;
-      const isOpenRound = QF_OPEN_IDS.has(m.id) || SF_OPEN_IDS.has(m.id);
+      const isOpenRound = QF_OPEN_IDS.has(m.id) || SF_OPEN_IDS.has(m.id) || FINAL_OPEN_IDS.has(m.id);
       const roundOpen = !locked || isOpenRound;
 
       // Open picking — everyone can pick any team in open rounds
