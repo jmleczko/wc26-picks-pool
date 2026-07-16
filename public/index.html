@@ -1286,28 +1286,6 @@ function renderBracket(fixtures){
   const champ = finalMatch ? picks.bracket[finalMatch.id] : null;
   let html = `<div class="champion-banner"><div class="ct">Your champion</div><div class="cn">${champ ? '🏆 ' + teamLabel(champ) : '— pick through the bracket below —'}</div></div>`;
 
-  // Third Place playoff — rendered separately since classifyRound returns null for it
-  const thirdMatch = (fixtures || []).find(f => f.stage && f.stage.toUpperCase().includes('THIRD'));
-  if(thirdMatch && isRealTeam(thirdMatch.home) && isRealTeam(thirdMatch.away)){
-    const tLocked = isRoundLocked('FINAL', gates); // shares gate with Final
-    const tOpen = FINAL_OPEN_IDS.has(thirdMatch.id);
-    const tHome = thirdMatch.home;
-    const tAway = thirdMatch.away;
-    const tPicked = picks.bracket[thirdMatch.id];
-    const tPickable = !tLocked || tOpen;
-    html += `<div class="round-block"><div class="round-label">Third Place</div>
-      <div class="match ${tLocked && !tOpen ? 'locked' : ''}">
-        <div class="pick-row ${tPicked === tHome ? 'selected' : ''}" data-id="${thirdMatch.id}" data-team="${encodeURIComponent(tHome)}" data-locked="${!tPickable}">
-          <div class="dot"></div><div class="pname">${flag(canon(tHome))} ${teamLabel(tHome)}</div>
-        </div>
-        <div class="pick-row ${tPicked === tAway ? 'selected' : ''}" data-id="${thirdMatch.id}" data-team="${encodeURIComponent(tAway)}" data-locked="${!tPickable}">
-          <div class="dot"></div><div class="pname">${flag(canon(tAway))} ${teamLabel(tAway)}</div>
-        </div>
-        ${tLocked && !tOpen ? '<div class="placeholder-note" style="padding:0 12px 8px;">🔒 Locked</div>' : ''}
-      </div>
-    </div>`;
-  }
-
   [...ROUND_ORDER].reverse().forEach(round => {
     const matches = knockout.filter(f => f.round === round).sort((a, b) => a.id - b.id);
     if(matches.length === 0) return;
@@ -1364,6 +1342,30 @@ function renderBracket(fixtures){
       </div>`;
     });
     html += `${collapsible ? '</div>' : ''}</div>`;
+
+    // Third Place — render right after Final so order is: Final → Third Place → SF → QF → R32
+    if(round === 'FINAL'){
+      const thirdMatch = (fixtures || []).find(f => f.stage && f.stage.toUpperCase().includes('THIRD'));
+      if(thirdMatch && isRealTeam(thirdMatch.home) && isRealTeam(thirdMatch.away)){
+        const tLocked = isRoundLocked('FINAL', gates);
+        const tOpen = FINAL_OPEN_IDS.has(thirdMatch.id);
+        const tHome = thirdMatch.home;
+        const tAway = thirdMatch.away;
+        const tPicked = picks.bracket[thirdMatch.id];
+        const tPickable = !tLocked || tOpen;
+        html += `<div class="round-block"><div class="round-label">Third Place</div>
+          <div class="match ${tLocked && !tOpen ? 'locked' : ''}">
+            <div class="pick-row ${tPicked === tHome ? 'selected' : ''}" data-id="${thirdMatch.id}" data-team="${encodeURIComponent(tHome)}" data-locked="${!tPickable}">
+              <div class="dot"></div><div class="pname">${flag(canon(tHome))} ${teamLabel(tHome)}</div>
+            </div>
+            <div class="pick-row ${tPicked === tAway ? 'selected' : ''}" data-id="${thirdMatch.id}" data-team="${encodeURIComponent(tAway)}" data-locked="${!tPickable}">
+              <div class="dot"></div><div class="pname">${flag(canon(tAway))} ${teamLabel(tAway)}</div>
+            </div>
+            ${tLocked && !tOpen ? '<div class="placeholder-note" style="padding:0 12px 8px;">🔒 Locked</div>' : ''}
+          </div>
+        </div>`;
+      }
+    }
   });
 
   area.innerHTML = html;
