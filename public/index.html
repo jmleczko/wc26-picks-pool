@@ -1356,10 +1356,10 @@ function renderBracket(fixtures){
         html += `<div class="round-block"><div class="round-label">Third Place</div>
           <div class="match ${tLocked && !tOpen ? 'locked' : ''}">
             <div class="pick-row ${tPicked === tHome ? 'selected' : ''}" data-id="${thirdMatch.id}" data-team="${encodeURIComponent(tHome)}" data-locked="${!tPickable}">
-              <div class="dot"></div><div class="pname">${flag(canon(tHome))} ${teamLabel(tHome)}</div>
+              <div class="dot"></div><div class="pname">${teamLabel(tHome)}</div>
             </div>
             <div class="pick-row ${tPicked === tAway ? 'selected' : ''}" data-id="${thirdMatch.id}" data-team="${encodeURIComponent(tAway)}" data-locked="${!tPickable}">
-              <div class="dot"></div><div class="pname">${flag(canon(tAway))} ${teamLabel(tAway)}</div>
+              <div class="dot"></div><div class="pname">${teamLabel(tAway)}</div>
             </div>
             ${tLocked && !tOpen ? '<div class="placeholder-note" style="padding:0 12px 8px;">🔒 Locked</div>' : ''}
           </div>
