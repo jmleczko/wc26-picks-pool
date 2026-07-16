@@ -1313,7 +1313,8 @@ function renderBracket(fixtures){
       // At least one side is known — render as a pickable match
       const bothResolved = homeSlot.team && awaySlot.team;
       const isSpeculative = homeSlot.speculative || awaySlot.speculative;
-      const isOpenRound = QF_OPEN_IDS.has(m.id) || SF_OPEN_IDS.has(m.id) || FINAL_OPEN_IDS.has(m.id);
+      // isOpenRound only needed for Final/Third Place — QF and SF have their own gates in isRoundLocked
+      const isOpenRound = FINAL_OPEN_IDS.has(m.id);
       const roundOpen = !locked || isOpenRound;
 
       // Open picking — everyone can pick any team in open rounds
