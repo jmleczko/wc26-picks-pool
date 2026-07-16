@@ -1184,12 +1184,9 @@ function isRoundLocked(round, gates){
     return sfGate != null && now >= sfGate;
   }
   if(round === 'FINAL') {
-    // Final and Third Place lock at the earliest kickoff (Third Place, Jul 18)
-    const finalTimes = [...FINAL_OPEN_IDS].map(id => {
-      const f = (window._bracketFixtures || []).find(x => x.id === id);
-      return f && f.kickoff ? new Date(f.kickoff).getTime() : null;
-    }).filter(Boolean);
-    const finalGate = finalTimes.length ? Math.min(...finalTimes) : null;
+    // Final (537390) locks at its own kickoff (Jul 19) — NOT at Third Place kickoff
+    const f = (window._bracketFixtures || []).find(x => x.id === 537390);
+    const finalGate = f && f.kickoff ? new Date(f.kickoff).getTime() : null;
     return finalGate != null && now >= finalGate;
   }
   return gates.r16Gate != null && now >= gates.r16Gate; // R16 still locked
@@ -1347,7 +1344,9 @@ function renderBracket(fixtures){
     if(round === 'FINAL'){
       const thirdMatch = (fixtures || []).find(f => f.stage && f.stage.toUpperCase().includes('THIRD'));
       if(thirdMatch && isRealTeam(thirdMatch.home) && isRealTeam(thirdMatch.away)){
-        const tLocked = isRoundLocked('FINAL', gates);
+        // Third Place locks at its own kickoff (Jul 18), independent of the Final
+        const thirdKickoff = thirdMatch.kickoff ? new Date(thirdMatch.kickoff).getTime() : null;
+        const tLocked = thirdKickoff != null && Date.now() >= thirdKickoff;
         const tOpen = FINAL_OPEN_IDS.has(thirdMatch.id);
         const tHome = thirdMatch.home;
         const tAway = thirdMatch.away;
