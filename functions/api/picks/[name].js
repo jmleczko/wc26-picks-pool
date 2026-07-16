@@ -60,36 +60,20 @@ function bracketLockGates(fixtures) {
 }
 
 // Which gate (if any) applies to a given match id, based on that match's own round.
-const FINAL_OPEN_IDS = new Set(['537389', '537390']); // Third Place + Final
-
 function gateForMatch(matchId, fixtures, gates) {
-  // Final and Third Place use their own gate (earliest of the two kickoffs)
-  if (FINAL_OPEN_IDS.has(String(matchId))) {
-    const times = (fixtures || [])
-      .filter(x => FINAL_OPEN_IDS.has(String(x.id)) && x.kickoff)
-      .map(x => new Date(x.kickoff).getTime())
-      .filter(t => !Number.isNaN(t));
-    return times.length ? Math.min(...times) : null;
-  }
   const f = (fixtures || []).find(x => String(x.id) === String(matchId));
   if (!f) return null;
   const round = classifyRound(f.stage);
+  const stage = (f.stage || '').toUpperCase();
+
   if (round === 'R32') return gates.r32Gate;
   if (round === 'R16') return gates.r16Gate;
-  if (round === 'QF') {
-    const times = (fixtures || [])
-      .filter(x => classifyRound(x.stage) === 'QF' && x.kickoff)
-      .map(x => new Date(x.kickoff).getTime())
-      .filter(t => !Number.isNaN(t));
-    return times.length ? Math.min(...times) : null;
+
+  // QF, SF, Final, and Third Place each use their own match kickoff as the gate
+  if (round === 'QF' || round === 'SF' || round === 'FINAL' || stage.includes('THIRD')) {
+    return f.kickoff ? new Date(f.kickoff).getTime() : null;
   }
-  if (round === 'SF') {
-    const times = (fixtures || [])
-      .filter(x => classifyRound(x.stage) === 'SF' && x.kickoff)
-      .map(x => new Date(x.kickoff).getTime())
-      .filter(t => !Number.isNaN(t));
-    return times.length ? Math.min(...times) : null;
-  }
+
   return null;
 }
 
