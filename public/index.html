@@ -358,6 +358,45 @@
 
 <div id="congratsBanner" class="congrats-banner">🎉 Congrats Damon for winning the group stage!! 🎉</div>
 
+<section id="scoringAnnouncementBox" style="
+  background: linear-gradient(135deg, rgba(163,61,61,0.7), rgba(80,20,20,0.85));
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border: 2px solid var(--gold);
+  border-radius: 14px;
+  padding: 20px 24px;
+  margin: 16px 16px 0;
+  max-width: 868px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+  box-shadow: 0 0 30px rgba(163,61,61,0.4);
+">
+  <div style="font-family:'Anton',sans-serif; font-size:13px; letter-spacing:0.12em; text-transform:uppercase; color:var(--gold-soft); margin-bottom:8px;">🏆 Final Round Scoring 🏆</div>
+  <div style="display:flex; justify-content:center; gap:32px; flex-wrap:wrap; align-items:flex-end;">
+    <div style="text-align:center;">
+      <div style="font-family:'Anton',sans-serif; font-size:52px; line-height:1; color:var(--gold); text-shadow: 0 0 20px rgba(163,61,61,0.8);">20</div>
+      <div style="font-family:'Anton',sans-serif; font-size:11px; letter-spacing:0.1em; color:rgba(242,239,230,0.7); margin-top:4px;">POINTS</div>
+      <div style="font-size:13px; color:var(--chalk); margin-top:6px;">🥇 Correct Champion</div>
+      <div style="font-size:11px; color:rgba(242,239,230,0.5); margin-top:2px;">Spain vs Argentina · Jul 19</div>
+    </div>
+    <div style="font-family:'Anton',sans-serif; font-size:32px; color:rgba(242,239,230,0.2); align-self:center;">+</div>
+    <div style="text-align:center;">
+      <div style="font-family:'Anton',sans-serif; font-size:52px; line-height:1; color:var(--gold-soft); text-shadow: 0 0 20px rgba(163,61,61,0.5);">10</div>
+      <div style="font-family:'Anton',sans-serif; font-size:11px; letter-spacing:0.1em; color:rgba(242,239,230,0.7); margin-top:4px;">POINTS</div>
+      <div style="font-size:13px; color:var(--chalk); margin-top:6px;">🥉 Correct Third Place</div>
+      <div style="font-size:11px; color:rgba(242,239,230,0.5); margin-top:2px;">France vs England · Jul 18</div>
+    </div>
+    <div style="font-family:'Anton',sans-serif; font-size:32px; color:rgba(242,239,230,0.2); align-self:center;">+</div>
+    <div style="text-align:center;">
+      <div style="font-family:'Anton',sans-serif; font-size:52px; line-height:1; color:rgba(242,239,230,0.6);">1</div>
+      <div style="font-family:'Anton',sans-serif; font-size:11px; letter-spacing:0.1em; color:rgba(242,239,230,0.7); margin-top:4px;">POINT</div>
+      <div style="font-size:13px; color:var(--chalk); margin-top:6px;">Each R16–SF Pick</div>
+      <div style="font-size:11px; color:rgba(242,239,230,0.5); margin-top:2px;">Max 7 pts</div>
+    </div>
+  </div>
+  <div style="margin-top:16px; font-family:'Space Mono',monospace; font-size:11px; color:rgba(242,239,230,0.45); letter-spacing:0.04em;">MAXIMUM POSSIBLE: 37 POINTS</div>
+</section>
+
 <section id="knockoutLeaderboardBox" class="lb-highlighted">
   <div class="lb-head">
     <h2>🏆 Knockout Leaderboard</h2>
@@ -369,7 +408,7 @@
       <button class="btn btn-ghost" id="koLbRefreshBtn">↻</button>
     </div>
   </div>
-  <div class="lb-sub">1 point per correctly-picked winner, Round of 16 through the Final, scored live as real results come in.</div>
+  <div class="lb-sub">1 point per correctly-picked winner (Round of 16 through Semifinals) · 10 pts for Third Place · <strong style="color:var(--gold)">20 pts for Champion</strong> — scored live as results come in.</div>
   <div id="knockoutLeaderboardList"><div class="live-empty">Loading…</div></div>
 </section>
 
@@ -1613,12 +1652,22 @@ function computeScore(picks, standings){
 function computeKnockoutScore(picks, fixtures){
   let score = 0;
   (fixtures || []).forEach(f => {
-    const round = classifyRound(f.stage);
-    if(!round) return; // skips GROUP_STAGE, THIRD_PLACE, anything unrecognized
-    if(round === 'R32') return; // R32 excluded — scoring starts at R16
     if(!f.winner) return; // not decided yet
     const pick = picks.bracket && picks.bracket[f.id];
-    if(pick && canon(pick) === canon(f.winner)) score += 1;
+    if(!pick || canon(pick) !== canon(f.winner)) return;
+
+    const stage = (f.stage || '').toUpperCase();
+    const round = classifyRound(f.stage);
+
+    if(f.id === 537390 || stage.includes('FINAL') && !stage.includes('THIRD') && !stage.includes('SEMI') && !stage.includes('QUARTER')){
+      score += 20; // Final — champion pick
+    } else if(f.id === 537389 || stage.includes('THIRD')){
+      score += 10; // Third Place
+    } else {
+      if(!round) return; // skip GROUP_STAGE
+      if(round === 'R32') return; // R32 excluded
+      score += 1; // all other knockout matches
+    }
   });
   return score;
 }
