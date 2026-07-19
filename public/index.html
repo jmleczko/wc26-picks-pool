@@ -1513,6 +1513,31 @@ async function loadCompare(){
         </div>`;
       });
       html += `</div></div>`;
+
+      // Third Place — rendered separately since classifyRound returns null for it
+      const thirdMatchCmp = fixtures.find(f => f.stage && f.stage.toUpperCase().includes('THIRD'));
+      if(thirdMatchCmp && (isRealTeam(thirdMatchCmp.home) || isRealTeam(thirdMatchCmp.away))){
+        const anyPickedThird = all.some(p => p.picks.bracket && p.picks.bracket[thirdMatchCmp.id]);
+        if(anyPickedThird){
+          const homeLabel = isRealTeam(thirdMatchCmp.home) ? teamLabel(thirdMatchCmp.home) : 'TBD';
+          const awayLabel = isRealTeam(thirdMatchCmp.away) ? teamLabel(thirdMatchCmp.away) : 'TBD';
+          html += `<div class="section-title">
+            <h2>Third Place picks</h2>
+            <button class="collapse-toggle" id="cmpBracket_THIRD_toggle">Hide</button>
+          </div>`;
+          html += `<div id="cmpBracket_THIRD_body" class="collapsible-body">`;
+          html += `<div class="cmp-table-wrap"><table class="cmp"><thead><tr><th>Match</th>`;
+          all.forEach(p => html += `<th>${p.name}</th>`);
+          html += `</tr></thead><tbody><tr>`;
+          html += `<td class="grp">${homeLabel} vs ${awayLabel}</td>`;
+          all.forEach(p => {
+            const pick = p.picks.bracket && p.picks.bracket[thirdMatchCmp.id];
+            html += `<td>${pick ? teamLabel(pick) : '—'}</td>`;
+          });
+          html += `</tr></tbody></table></div></div>`;
+        }
+      }
+
       return;
     }
 
@@ -1604,7 +1629,7 @@ async function loadCompare(){
   area.innerHTML = html;
 
   // Wire up bracket round collapsibles dynamically
-  ['FINAL', ...ROUND_ORDER].forEach(round => {
+  ['FINAL', 'THIRD', ...ROUND_ORDER].forEach(round => {
     const toggleId = `cmpBracket_${round}_toggle`;
     const bodyId = `cmpBracket_${round}_body`;
     const toggle = document.getElementById(toggleId);
